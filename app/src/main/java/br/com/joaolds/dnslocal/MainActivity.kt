@@ -32,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var listStatus: TextView
     private lateinit var updateList: Button
     @Volatile private var updatingList = false
+    private var statusLoader: Thread? = null
     private data class DnsSelection(
         val primary: String,
         val secondary: String?,
@@ -94,6 +95,13 @@ class MainActivity : Activity() {
     override fun onPause() {
         unregisterReceiver(receiver)
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        // Do not keep parsing a large blocklist for a closed screen.
+        statusLoader?.interrupt()
+        statusLoader = null
+        super.onDestroy()
     }
 
     private fun isAllowedIpv4(value: String): Boolean {
@@ -191,14 +199,15 @@ class MainActivity : Activity() {
         HaGeZiListStore(File(filesDir, "dns-lists"))
 
     private fun refreshListStatus() {
-        Thread({
+        statusLoader?.interrupt()
+        statusLoader = Thread({
             val loaded = listStore().load()
             val updatedAt = File(filesDir, "dns-lists/hagezi-pro-mini-onlydomains.txt").lastModified()
             runOnUiThread {
                 if (isDestroyed || updatingList) return@runOnUiThread
                 showListStatus(loaded?.size, updatedAt)
             }
-        }, "dns-list-status").start()
+        }, "dns-list-status").apply { start() }
     }
 
     private fun showListStatus(count: Int?, updatedAt: Long) {
