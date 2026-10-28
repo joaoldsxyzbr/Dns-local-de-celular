@@ -23,6 +23,7 @@ fun main() {
     replyFrame.copyInto(frame, 20, 22, 24)
     replyFrame.copyInto(frame, 22, 20, 22)
     request.copyInto(frame, 28)
+    recalculateIpv4UdpChecksums(frame)
     val list = DomainBlocklist.parse(StringReader("ads.example.com\n"))
     var upstreamCalls = 0
     val filtered = DnsDomainFilter(list) { upstreamCalls++; sampleReply }

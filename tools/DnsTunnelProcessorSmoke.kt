@@ -19,6 +19,7 @@ fun tunnelSmoke() {
     outgoingReply.copyInto(queryFrame, 20, 22, 24)
     outgoingReply.copyInto(queryFrame, 22, 20, 22)
     request.copyInto(queryFrame, 28)
+    recalculateIpv4UdpChecksums(queryFrame)
 
     var calls = 0
     val processor = DnsTunnelProcessor(virtual) { payload ->

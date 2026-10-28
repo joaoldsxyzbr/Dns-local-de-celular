@@ -44,3 +44,9 @@ O validador de resposta DNS agora exige transação, opcode e **pergunta complet
 ## DNS de reserva e códigos de erro
 
 O fallback opcional passa a considerar respostas **SERVFAIL (RCODE 2)** e **REFUSED (RCODE 5)** do primário como falhas elegíveis para tentar o DNS secundário. **NXDOMAIN (RCODE 3)** não gera fallback, pois pode indicar um nome inexistente ou bloqueado; o primário continua sendo o único consultado quando a chave de reserva está desativada. Testes unitários com DNS simulado cobrem essas situações. O transporte e a VPN ainda não foram validados no Android.
+
+## Checksums e limites de pacotes TUN
+
+O processador de entrada IPv4/UDP agora exige comprimento IPv4 igual ao frame lido e valida o checksum do cabeçalho IPv4. O checksum UDP é validado com o pseudo-cabeçalho de origem/destino sempre que diferente de zero; o valor zero é permitido para IPv4. Quadros truncados, adulterados ou com bytes excedentes são descartados sem enviar consultas ao DNS. Não há dependência nova ou temporizador.
+
+O teste `packetIntegritySmoke()` reproduziu falha contra a implementação anterior e passou no código corrigido (JVM/Kotlin local). As fixtures anteriores foram adaptadas para construir quadros TUN com checksums íntegros. **Compilação Android, uso em aparelho e bateria permanecem sem validação.**

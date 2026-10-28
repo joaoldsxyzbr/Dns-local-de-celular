@@ -36,7 +36,8 @@ internal object DnsPacketCodec {
         val headerSize = (versionAndIhl and 0x0f) * 4
         if (headerSize < IPV4_HEADER || headerSize + UDP_HEADER > length) return null
         val totalLength = word(packet, 2)
-        if (totalLength < headerSize + UDP_HEADER || totalLength > length) return null
+        if (totalLength < headerSize + UDP_HEADER || totalLength != length) return null
+        if (checksum(packet, 0, headerSize) != 0) return null
         // Reject fragments (MF flag or a nonzero offset); don't misread partial UDP.
         if (word(packet, 6) and 0x3fff != 0) return null
         if (byte(packet, 9) != 17) return null // UDP only
@@ -45,6 +46,15 @@ internal object DnsPacketCodec {
         if (word(packet, headerSize + 2) != 53) return null
         val udpLength = word(packet, headerSize + 4)
         if (udpLength < UDP_HEADER + 12 || udpLength > totalLength - headerSize) return null
+        // UDP checksum 0 is permitted for IPv4; nonzero checksums must validate.
+        if (word(packet, headerSize + 6) != 0) {
+            val sum = OnesComplementSum()
+            sum.addBytes(packet, 12, 8) // IPv4 pseudo-header addresses
+            sum.add(17)
+            sum.add(udpLength)
+            sum.addBytes(packet, headerSize, udpLength)
+            if (sum.result() != 0) return null
+        }
         val payloadSize = udpLength - UDP_HEADER
         if (payloadSize > MAX_DNS_PAYLOAD) return null
         val dnsOffset = headerSize + UDP_HEADER
