@@ -54,11 +54,11 @@ jobs:
           sh tools/test-tcp-session.sh
           sh tools/test-tcp-tunnel.sh
 
-      - name: Compilar APK debug sem publicação
+      - name: Validar Android Lint e compilar APK debug sem publicação
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew --no-daemon :app:assembleDebug
+          ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
           test -s app/build/outputs/apk/debug/app-debug.apk
           "${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/debug/app-debug.apk | head -20
 
