@@ -15,3 +15,9 @@ Na abertura explícita de uma sessão, a `LocalDnsVpnService` agora lê/valida a
 Isso **não cria polling**, consultas DNS de verificação, timers, atualizações periódicas, nova dependência nem novos logs. Enquanto a lista está sendo carregada, o status permanece `STARTING`. Se a lista ainda não existe ou está inválida, a VPN pode iniciar sem filtro e deve mostrar esse estado, como antes.
 
 O script `python3 tools/test-vpn-startup-structure.py` verifica estas invariantes **somente por análise estática**; não compila Android nem comprova cancelamento de threads no dispositivo. Para testes reais, seguir `docs/android-device-validation.md`.
+
+## Comprimento de mensagens DNS entre segmentos
+
+O complemento `DnsTcpMessageFramer` acumula, sob limite estrito de 1.474 bytes, pedaços **já ordenados** de uma única consulta DNS/TCP. Rejeita prefixos fora do limite, bytes excedentes e respostas apresentadas como consultas. Também divide uma resposta de até 1.472 bytes em pedaços TCP de até 1.460 bytes, sem polling nem tarefas em segundo plano. Teste JVM independente: `sh tools/test-tcp-framing.sh`.
+
+**Falta** controle da sequência TCP, remontagem de pacotes fora de ordem, handshake, retransmissão e encerramento de sessão. Portanto este framer continua isolado e **não é ativação de DNS TCP no túnel**. O código em Android só será ligado após validações específicas.
