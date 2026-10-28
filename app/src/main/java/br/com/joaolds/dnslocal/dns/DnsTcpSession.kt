@@ -19,7 +19,7 @@ internal class DnsTcpSession(
         private fun plus(sequence: Long, amount: Int) = (sequence + amount) and MASK
     }
 
-    private enum class Phase { WAIT_SYN, WAIT_ACK, RECEIVING, FIN_SENT, CLOSED }
+    private enum class Phase { WAIT_SYN, WAIT_ACK, RECEIVING, FIN_SENT, WAIT_PEER_FIN, CLOSED }
     @Volatile private var phase = Phase.WAIT_SYN
     private val framer = DnsTcpMessageFramer()
     private val initialSeq = serverInitialSequence
@@ -27,6 +27,7 @@ internal class DnsTcpSession(
     private var clientNext = 0L
     private var originalSyn = 0L
     private var peerMss = 536
+    private var peerFinSeen = false
     private var lastClientDataSequence = -1L
     private var finalReplies: List<Reply> = emptyList()
 
@@ -61,7 +62,16 @@ internal class DnsTcpSession(
             Phase.FIN_SENT -> {
                 if (segment.flags and ACK != 0 && segment.sequence == clientNext &&
                     segment.acknowledgment == serverNext) {
-                    phase = Phase.CLOSED
+                    if (segment.flags and FIN != 0) {
+                        clientNext = plus(clientNext, 1)
+                        phase = Phase.CLOSED
+                        return listOf(Reply(serverNext, clientNext, ACK))
+                    }
+                    if (peerFinSeen) {
+                        phase = Phase.CLOSED
+                    } else {
+                        phase = Phase.WAIT_PEER_FIN
+                    }
                     return emptyList()
                 }
                 // Sender can retransmit last DNS payload if response/FIN was lost.
@@ -69,6 +79,15 @@ internal class DnsTcpSession(
                     segment.sequence == lastClientDataSequence &&
                     finalReplies.isNotEmpty() && segment.acknowledgment == finalReplies[0].sequence
                 ) finalReplies else emptyList()
+            }
+            Phase.WAIT_PEER_FIN -> {
+                if (segment.flags and ACK != 0 && segment.sequence == clientNext &&
+                    segment.acknowledgment == serverNext && segment.flags and FIN != 0) {
+                    clientNext = plus(clientNext, 1)
+                    phase = Phase.CLOSED
+                    return listOf(Reply(serverNext, clientNext, ACK))
+                }
+                return emptyList()
             }
             Phase.RECEIVING -> Unit
             Phase.CLOSED -> return emptyList()
@@ -84,7 +103,10 @@ internal class DnsTcpSession(
                 phase = Phase.CLOSED
                 return listOf(Reply(serverNext, clientNext, RST or ACK))
             }
-            if (segment.flags and FIN != 0) clientNext = plus(clientNext, 1)
+            if (segment.flags and FIN != 0) {
+                peerFinSeen = true
+                clientNext = plus(clientNext, 1)
+            }
             if (query != null) {
                 val candidate = try { resolve(query) } catch (_: Exception) { null }
                 val response = candidate?.takeIf {
@@ -111,6 +133,7 @@ internal class DnsTcpSession(
             return listOf(Reply(serverNext, clientNext, ACK))
         }
         if (segment.flags and FIN != 0) {
+            peerFinSeen = true
             clientNext = plus(clientNext, 1)
             return finishEarly()
         }

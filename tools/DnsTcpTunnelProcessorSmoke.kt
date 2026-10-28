@@ -78,6 +78,11 @@ private fun endToEndTcpTunSmoke() {
     check(upstreamCalls == 1) // Duplicate segment must not query upstream again.
     check(send(1001 + framedRequest.size.toLong(), 2001 + dnsResponse.size + 3L,
         DnsTcpSession.ACK).isEmpty())
+    check(processor.currentSessionCount() == 1)
+    val finalAck = send(1001 + framedRequest.size.toLong(), 2001 + dnsResponse.size + 3L,
+        DnsTcpSession.FIN or DnsTcpSession.ACK)
+    check(finalAck.size == 1)
+    check((finalAck[0][33].toInt() and 255) == DnsTcpSession.ACK)
     check(processor.currentSessionCount() == 0)
     println("OK: IPv4/TCP TUN SYN, query, reply, retransmission, FIN, checksum")
 }

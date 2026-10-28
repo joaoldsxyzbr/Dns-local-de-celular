@@ -33,7 +33,21 @@ fun main() {
     check(flow.accept(packet(1020, replies[1].sequence + 1, DnsTcpSession.ACK)).isEmpty())
     check(!flow.isClosed) // Incorrect sequence cannot close a TCP flow.
     check(flow.accept(packet(1001 + wire.size.toLong(), replies[1].sequence + 1, DnsTcpSession.ACK)).isEmpty())
+    check(!flow.isClosed) // Server FIN was ACKed, but the client has not sent FIN.
+    val clientFinAck = flow.accept(packet(1001 + wire.size.toLong(),
+        replies[1].sequence + 1, DnsTcpSession.FIN or DnsTcpSession.ACK)).single()
+    check(clientFinAck.flags == DnsTcpSession.ACK)
+    check(clientFinAck.acknowledgment == 1002 + wire.size.toLong())
     check(flow.isClosed)
+
+    // Client FIN combined with the ACK of our FIN is answered immediately.
+    val combined = DnsTcpSession(10) { answer }
+    combined.accept(packet(100, 0, DnsTcpSession.SYN))
+    combined.accept(packet(101, 11, DnsTcpSession.ACK))
+    val combinedReplies = combined.accept(packet(101, 11, 0x18, wire))
+    val serverFinAck = combined.accept(packet(101 + wire.size.toLong(),
+        combinedReplies.last().sequence + 1, DnsTcpSession.FIN or DnsTcpSession.ACK)).single()
+    check(serverFinAck.flags == DnsTcpSession.ACK && combined.isClosed)
 
     val invalid = DnsTcpSession(12) { error("Malformed DNS cannot reach upstream") }
     invalid.accept(packet(100, 0, DnsTcpSession.SYN))
