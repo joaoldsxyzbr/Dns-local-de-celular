@@ -5,7 +5,7 @@
     <string name="home_subtitle">DNS no próprio celular, com foco em baixo consumo de bateria.</string>
     <string name="protection_label">STATUS DA PROTEÇÃO</string>
     <string name="protection_off">Desligada</string>
-    <string name="protection_hint">O serviço DNS local ainda está em desenvolvimento. Nenhum tráfego é filtrado por esta versão.</string>
+    <string name="protection_hint">O protótipo encaminha DNS IPv4/UDP pela VPN local. Filtros HaGeZi e testes em Android ainda estão pendentes.</string>
     <string name="start_unavailable">Iniciar proteção (em desenvolvimento)</string>
     <string name="dns_section">SERVIDORES DNS</string>
     <string name="primary_pending">Primário: configuração pendente</string>
@@ -14,5 +14,18 @@
     <string name="blocklist_section">BLOQUEIO DE ANÚNCIOS</string>
     <string name="blocklist_default">Lista selecionada: HaGeZi Multi PRO Mini</string>
     <string name="blocklist_not_loaded">Lista ainda não carregada. Bloqueio inativo.</string>
-    <string name="early_build_note">Versão inicial para estruturar o aplicativo. Não é um bloqueador de anúncios funcional.</string>
+    <string name="early_build_note">Protótipo experimental. Uma VPN por perfil; outro aplicativo VPN pode ser desconectado. DNS Privado e IPv6 ainda não foram verificados.</string>
+    <string name="start_dns">Iniciar DNS experimental</string>
+    <string name="stop_dns">Parar serviço DNS</string>
+    <string name="protection_starting">Conectando…</string>
+    <string name="protection_dns_only">DNS local ativo (sem bloqueio)</string>
+    <string name="protection_error">Falha ao iniciar VPN</string>
+    <string name="primary_hint">IP do DNS primário (ex.: 1.1.1.1)</string>
+    <string name="primary_transport_note">Protótipo: DNS tradicional UDP/53, sem criptografia. Não há bloqueio de anúncios.</string>
+    <string name="invalid_primary_dns">Informe um endereço IPv4 válido e utilizável.</string>
+    <string name="vpn_start_failed">Não foi possível iniciar o serviço DNS.</string>
+    <string name="vpn_permission_denied">Permissão de VPN não concedida.</string>
+    <string name="notification_channel">Conexão DNS local</string>
+    <string name="notification_title">DNS Local: serviço experimental</string>
+    <string name="notification_description">DNS por VPN local ativo, sem bloqueio de anúncios.</string>
 </resources>

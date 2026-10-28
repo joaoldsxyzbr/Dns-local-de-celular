@@ -39,6 +39,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:id="@+id/protectionStatus"
             android:text="@string/protection_off"
             android:textColor="#8A3440"
             android:textSize="24sp"
@@ -53,11 +54,18 @@
             android:textSize="14sp" />
 
         <Button
+            android:id="@+id/startDns"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:text="@string/start_dns" />
+
+        <Button
+            android:id="@+id/stopDns"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="@string/start_unavailable" />
+            android:text="@string/stop_dns" />
 
         <TextView
             android:layout_width="match_parent"
@@ -68,13 +76,21 @@
             android:textSize="12sp"
             android:textStyle="bold" />
 
-        <TextView
+        <EditText
+            android:id="@+id/primaryDnsInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/primary_pending"
-            android:textColor="#14223C"
-            android:textSize="15sp" />
+            android:hint="@string/primary_hint"
+            android:inputType="text"
+            android:singleLine="true"
+            android:maxLength="15"
+            android:importantForAutofill="no" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/primary_transport_note"
+            android:textSize="12sp" />
 
         <TextView
             android:layout_width="match_parent"
