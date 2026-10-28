@@ -18,3 +18,9 @@ Os testes locais em Kotlin/JVM foram executados com sucesso:
 **Limites:** o filtro cobre apenas as consultas DNS IPv4/UDP capturadas pela VPN experimental. Não há comprovação de funcionamento Android, nem interceptação de DNS Privado, DoH, IPv6 ou TCP. NXDOMAIN bloqueia nomes, não conteúdos dentro de domínios permitidos. Falta testar o APK em aparelho, medir RAM/bateria, fazer revisão de licença GPL-3.0 antes da redistribuição e avaliar tratamento de falsos positivos.
 
 Créditos e fonte: [HaGeZi DNS Blocklists](https://github.com/hagezi/dns-blocklists). Este projeto não embute uma cópia da lista no APK; obtém os dados remotamente mediante ação do usuário.
+
+## Otimização da normalização (Kotlin/JVM)
+
+Os domínios ASCII comuns passam pela validação de sintaxe sem chamar `java.net.IDN.toASCII` a cada pesquisa. Nomes com Unicode ou prefixo `xn--` continuam usando a conversão/validação IDN. O matching, deduplicação e índice imutável permanecem os mesmos.
+
+A regressão independente em Kotlin/JVM passou com ASCII, normalização de maiúsculas, Unicode/punycode, domínios inválidos, sufixos e um **índice sintético de 50.000 entradas**. Os testes não usaram nem redistribuíram dados da HaGeZi. Isso é uma otimização de caminho de código: não constitui medição de bateria, RAM ou CPU em Android real.

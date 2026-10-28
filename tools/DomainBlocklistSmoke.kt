@@ -26,5 +26,6 @@ fun main() {
     invalid.forEach {
         check(runCatching { DomainBlocklist.parse(StringReader(it)) }.isFailure) { it }
     }
+    normalizationSmoke()
     println("OK: HaGeZi domain index smoke checks passed")
 }

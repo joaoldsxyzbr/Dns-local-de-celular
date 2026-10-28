@@ -53,7 +53,13 @@ internal class DomainBlocklist private constructor(private val domains: Array<St
         private fun normalize(raw: String): String? {
             val input = raw.trim().removeSuffix(".")
             if (input.isEmpty() || input.length > 253 || !input.contains('.')) return null
-            val ascii = try {
+            // The common case for HaGeZi and DNS questions is ASCII.
+            // Avoid the cost of IDN conversion for ASCII names, while
+            // retaining strict IDN checks for Unicode and punycode labels.
+            val ascii = if (input.all { it.code < 128 } &&
+                !input.contains("xn--", ignoreCase = true)) {
+                input.lowercase(Locale.ROOT)
+            } else try {
                 IDN.toASCII(input, IDN.USE_STD3_ASCII_RULES).lowercase(Locale.ROOT)
             } catch (_: IllegalArgumentException) {
                 return null
