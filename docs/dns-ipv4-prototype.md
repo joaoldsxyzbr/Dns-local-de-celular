@@ -51,6 +51,8 @@ O processador de entrada IPv4/UDP agora exige comprimento IPv4 igual ao frame li
 
 O teste `packetIntegritySmoke()` reproduziu falha contra a implementação anterior e passou no código corrigido (JVM/Kotlin local). As fixtures anteriores foram adaptadas para construir quadros TUN com checksums íntegros. **Compilação Android, uso em aparelho e bateria permanecem sem validação.**
 
-## Verificação de comprimento UDP e regressão da suíte
+## Compatibilidade de comprimento UDP e regressão da suíte
 
-O protocolo exige que o comprimento UDP seja igual à quantidade de bytes após o cabeçalho IPv4: o parser passa a rejeitar datagramas UDP que declaram menos bytes do que o total IP, mesmo se seus checksums estiverem corretos. O teste `packetIntegritySmoke()` cobre essa situação gerando um pacote de comprimento incompatível com checksum UDP recalculado. O script `tools/test-filter-pipeline.sh` também inclui o módulo `DnsResponseValidator.kt`, introduzido numa etapa anterior, para compilar sem dependências ocultas. A verificação estática e os testes Kotlin locais não substituem o Android SDK e o teste do APK.
+O campo UDP Length **pode ser menor** que o payload IPv4 (área excedente definida pelo [RFC 9868](https://www.rfc-editor.org/rfc/rfc9868.html)). O codec aceita o excedente sem incluí-lo na consulta DNS nem no checksum UDP, mas rejeita comprimentos que excedam os dados IP. Os testes `packetIntegritySmoke()` cobrem o caso de área excedente e o caso de comprimento inválido. A afirmação anterior de que os comprimentos deveriam ser idênticos foi corrigida após consultar o padrão oficial.
+
+O script `tools/test-filter-pipeline.sh` inclui o módulo `DnsResponseValidator.kt`, introduzido numa etapa anterior, para compilar sem dependências ocultas. A verificação estática e os testes Kotlin locais não substituem o Android SDK nem o teste do APK.
