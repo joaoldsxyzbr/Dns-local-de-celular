@@ -16,7 +16,7 @@ internal class DnsTunnelProcessor(
             null
         }
         val dnsResponse = upstream?.takeIf {
-            DnsPacketCodec.isMatchingResponse(query.dnsPayload, it)
+            it.size in 12..1472 && DnsPacketCodec.isMatchingResponse(query.dnsPayload, it)
         } ?: DnsPacketCodec.servfail(query.dnsPayload) ?: return null
         return DnsPacketCodec.encodeReply(query, dnsResponse)
     }

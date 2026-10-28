@@ -39,6 +39,8 @@ fun tunnelSmoke() {
     check(fallback.contentEquals(outgoingReply)) // SERVFAIL: no silent bypass.
     val wrongId = DnsTunnelProcessor(virtual) { sampleResponse.copyOf().also { it[0] = 0x10 } }
     check(requireNotNull(wrongId.reply(queryFrame, queryFrame.size)).contentEquals(outgoingReply))
+    val oversized = DnsTunnelProcessor(virtual) { sampleResponse + ByteArray(1473) }
+    check(requireNotNull(oversized.reply(queryFrame, queryFrame.size)).contentEquals(outgoingReply))
     val exception = DnsTunnelProcessor(virtual) { throw IllegalStateException("upstream error") }
     check(requireNotNull(exception.reply(queryFrame, queryFrame.size)).contentEquals(outgoingReply))
     println("OK: DNS tunnel processor smoke checks passed")
