@@ -73,6 +73,15 @@ jobs:
             echo "Relatório Lint indisponível nesta execução."
           fi
 
+      - name: Arquivar relatório do Android Lint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dns-local-android-lint
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Arquivar APK somente para testes autorizados
         if: success()
         uses: actions/upload-artifact@v4

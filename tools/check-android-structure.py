@@ -52,6 +52,22 @@ class AndroidPreflight(unittest.TestCase):
         self.assertIn("android.net.VpnService", [a.attrib.get(NS + "name") for a in intents])
         self.assertIn("VpnService.prepare(this)", self.activity)
 
+    def test_dns_preferences_are_not_backed_up(self):
+        app = self.manifest.find("application")
+        self.assertEqual(app.attrib.get(NS + "allowBackup"), "false")
+        self.assertEqual(app.attrib.get(NS + "fullBackupContent"), "false")
+        self.assertEqual(
+            app.attrib.get(NS + "dataExtractionRules"),
+            "@xml/data_extraction_rules",
+        )
+        rules = ET.parse(APP / "res/xml/data_extraction_rules.xml").getroot()
+        self.assertEqual(rules.tag, "data-extraction-rules")
+        for section in ("cloud-backup", "device-transfer"):
+            exclude = rules.find(f"./{section}/exclude")
+            self.assertIsNotNone(exclude)
+            self.assertEqual(exclude.attrib.get("domain"), "root")
+            self.assertEqual(exclude.attrib.get("path"), ".")
+
     def test_ui_ids_and_strings_exist(self):
         layout_xml = content("app/src/main/res/layout/activity_main.xml")
         xml_ids = set(re.findall(r"@\+id/([A-Za-z_][A-Za-z_0-9]*)", layout_xml))

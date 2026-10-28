@@ -35,3 +35,7 @@ Para registro por aparelho, seguir `docs/android-device-validation.md`. Não pub
 ## Incremento posterior ao primeiro CI aprovado (28/10/2026)
 
 A atualização manual da HaGeZi agora é interrompida ao destruir a tela, inclusive em rotação, e o armazenamento verifica cancelamento antes/depois de leituras e antes de substituir o cache válido. A regressão Kotlin com InputStream interrompido e a verificação estática do ciclo de vida são incluídas nos testes já existentes. A validação final desta revisão também executa **Android Lint**. Estes resultados não substituem ensaios no aparelho físico.
+
+## Ajustes de compatibilidade e privacidade identificados pelo Lint (28/10/2026)
+
+O tema de navegação claro é aplicado apenas a partir da API 27; o Android 8.0 (API 26) conserva o tema-base sem o atributo indisponível. O registro do broadcast de status usa explicitamente `RECEIVER_NOT_EXPORTED` nas APIs 33+, com a sobrecarga legada exigida no intervalo 26–32. O falso positivo do Lint sobre a sobrecarga legada foi suprimido **somente no método de registro**, sem desativar análises globais. Preferências DNS e lista de bloqueio têm backup e transferência automática desabilitados, incluindo regras de extração para Android 12+.

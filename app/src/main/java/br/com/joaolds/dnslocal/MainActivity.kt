@@ -1,5 +1,6 @@
 package br.com.joaolds.dnslocal
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -81,6 +82,9 @@ class MainActivity : Activity() {
         updateStatus()
     }
 
+    // API 26–32 requires the legacy overload; API 33+ sets NOT_EXPORTED.
+    // This annotation only suppresses the false positive on the older branch.
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
         super.onResume()
         val filter = IntentFilter(LocalDnsVpnService.ACTION_STATUS)
