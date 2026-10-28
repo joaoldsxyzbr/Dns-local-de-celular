@@ -26,3 +26,9 @@ O serviço nativo `LocalDnsVpnService` agora declara a permissão `BIND_VPN_SERV
 A execução ainda está **pendente de Android SDK, build real, dispositivo e verificação de roteamento de rede**. Não há garantia de funcionamento com DNS Privado, IPv6, TCP/53, outra VPN, sempre ativa ou bloqueio de tráfego fora da VPN. Não habilitar always-on neste protótipo. O cliente trabalha por eventos de leitura bloqueante, com até duas consultas simultâneas e fila limitada a 48; excesso de trabalho recebe SERVFAIL, não acumula tarefas sem limite.
 
 Teste de fluxo de consultas (`tools/DnsTunnelProcessorSmoke.kt`): geração de resposta de sucesso, fallback explícito a SERVFAIL, resposta com ID incorreto e pacotes que não devem alcançar o upstream. Executar `sh tools/test-dns-core.sh` antes de afirmar aprovação do teste.
+
+## Correção do modo de leitura e autorização
+
+A API Android documenta que `VpnService.Builder.establish()` entrega a interface TUN em modo **não bloqueante** por padrão. Como este serviço usa `FileInputStream.read()` e uma thread dedicada, a configuração agora chama **`setBlocking(true)`** para impedir uma leitura em loop quando não existem consultas. Fonte: https://developer.android.com/reference/android/net/VpnService.Builder#setBlocking(boolean)
+
+A `MainActivity` também retém o IP primário **já validado** enquanto o sistema pede consentimento, impedindo que mudanças no campo de edição alterem o destino depois da validação. O primeiro teste de comportamento (VPN/TUN real) permanece pendente de compilação Android e dispositivo; isto não prova economia de bateria ou compatibilidade.

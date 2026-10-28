@@ -20,6 +20,7 @@ class MainActivity : Activity() {
     private lateinit var start: Button
     private lateinit var stop: Button
     private lateinit var status: TextView
+    private var pendingServer: String? = null
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             updateStatus()
@@ -71,8 +72,10 @@ class MainActivity : Activity() {
         getPreferences(MODE_PRIVATE).edit().putString("primaryIpv4", server).apply()
         val request = VpnService.prepare(this)
         if (request == null) {
+            pendingServer = null
             startDnsService(server)
         } else {
+            pendingServer = server // Preserve the validated value across the consent dialog.
             @Suppress("DEPRECATION")
             startActivityForResult(request, REQUEST_VPN)
         }
@@ -94,8 +97,10 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_VPN) {
-            if (resultCode == RESULT_OK) {
-                startDnsService(primary.text.toString().trim())
+            val approvedServer = pendingServer
+            pendingServer = null
+            if (resultCode == RESULT_OK && approvedServer != null) {
+                startDnsService(approvedServer)
             } else {
                 Toast.makeText(this, R.string.vpn_permission_denied, Toast.LENGTH_LONG).show()
             }

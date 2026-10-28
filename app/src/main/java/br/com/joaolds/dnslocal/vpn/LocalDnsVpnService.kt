@@ -61,6 +61,8 @@ class LocalDnsVpnService : VpnService() {
             val descriptor = Builder()
                 .setSession(getString(R.string.app_name))
                 .setMtu(1500)
+                // Blocking TUN reads avoid spin loops when no DNS query is pending.
+                .setBlocking(true)
                 .addAddress(LOCAL_IP, 32)
                 .addDnsServer(DNS_IP)
                 .addRoute(DNS_IP, 32)
@@ -79,8 +81,8 @@ class LocalDnsVpnService : VpnService() {
             running = true
             val epoch = generation.incrementAndGet()
             reader = Thread({ pumpPackets(descriptor, processor, pool, dnsAddress, epoch) }, "dns-tun-reader")
-                .apply { start() }
             publish(Status.RUNNING)
+            reader?.start()
         } catch (_: Exception) {
             stopTunnel()
             publish(Status.ERROR)
