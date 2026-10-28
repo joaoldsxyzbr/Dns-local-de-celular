@@ -4,6 +4,7 @@ import java.io.File
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.util.concurrent.CancellationException
 
 /** Bounded, fail-safe persistence: parse a temporary download before atomic replacement. */
 internal class HaGeZiListStore(
@@ -33,7 +34,9 @@ internal class HaGeZiListStore(
                     val buffer = ByteArray(16 * 1024)
                     var count = 0L
                     while (true) {
+                        checkNotCancelled()
                         val received = source.read(buffer)
+                        checkNotCancelled()
                         if (received < 0) break
                         require(received > 0) { "Download stream returned no data" }
                         count += received
@@ -42,7 +45,9 @@ internal class HaGeZiListStore(
                     }
                 }
             }
+            checkNotCancelled()
             val index = temp.bufferedReader(Charsets.UTF_8).use { validate(it) }
+            checkNotCancelled()
             Files.move(
                 temp.toPath(), File(directory, FILE_NAME).toPath(),
                 StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING
@@ -50,6 +55,12 @@ internal class HaGeZiListStore(
             return index
         } finally {
             temp.delete() // Existing valid list is not deleted on failure.
+        }
+    }
+
+    private fun checkNotCancelled() {
+        if (Thread.currentThread().isInterrupted) {
+            throw CancellationException("HaGeZi download cancelled")
         }
     }
 

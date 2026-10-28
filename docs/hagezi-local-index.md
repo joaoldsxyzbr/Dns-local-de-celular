@@ -31,3 +31,9 @@ A regressão independente em Kotlin/JVM passou com ASCII, normalização de mai�
 - O parser de até 250.000 domínios confere o sinal de interrupção durante o **processamento já em andamento** e encerra a leitura quando a VPN cancela a sessão. Isso não faz sondagens de rede nem adiciona timer.
 - A tela interrompe a leitura usada para exibir o estado da lista ao ser destruída (por exemplo, ao fechar/girar o aplicativo). A VPN continua usando a própria cópia imutável da lista por sessão.
 - Testes Kotlin/JVM de fluxos sintéticos passaram para leitura zerada, preservação do cache e cancelamento. A otimização ainda **não foi medida em Android**.
+
+## Cancelamento da atualização manual (28/10/2026)
+
+Ao destruir a tela (inclusive por rotação), a thread de **atualização manual** é interrompida, assim como a thread que consulta o estado da lista. O downloader HTTPS rejeita início ou persistência quando o cancelamento já foi solicitado. O armazenamento verifica a interrupção antes e depois de cada leitura e **antes da substituição atômica**, mantendo a última lista íntegra e limpando arquivos temporários. Uma chamada de rede já bloqueada pode levar até seu timeout configurado para retornar; não se promete cancelamento instantâneo de sockets. Sem polling, agendamento ou nova dependência.
+
+A regressão JVM em `tools/HaGeZiListStoreSmoke.kt` cobre um fluxo interrompido após a primeira leitura, sem leituras adicionais e sem substituir o arquivo válido. A interrupção HTTPS em Android real continua pendente de ensaio.

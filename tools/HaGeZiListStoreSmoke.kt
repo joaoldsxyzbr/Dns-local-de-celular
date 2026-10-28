@@ -2,6 +2,8 @@ package br.com.joaolds.dnslocal.blocklist
 
 import java.io.ByteArrayInputStream
 import java.nio.file.Files
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 fun main() {
     val dir = Files.createTempDirectory("dns-local-test-").toFile()
@@ -32,6 +34,31 @@ fun main() {
         }
         check(zeroRead.isFailure)
         check(store.load()?.size == 2) // Keep the previously saved valid copy.
+        // When the user closes the screen, stop the transfer before a second read.
+        // The stored list and its atomic-update safety must remain intact.
+        val readCalls = AtomicInteger()
+        val cancelled = AtomicBoolean(false)
+        val worker = Thread {
+            cancelled.set(runCatching {
+                store.update {
+                    object : ByteArrayInputStream("replacement.example.net\nother.example.org\n".toByteArray()) {
+                        override fun read(bytes: ByteArray, offset: Int, length: Int): Int {
+                            readCalls.incrementAndGet()
+                            val count = super.read(bytes, offset, length)
+                            if (count > 0) Thread.currentThread().interrupt()
+                            return count
+                        }
+                    }
+                }
+            }.isFailure)
+        }
+        worker.start()
+        worker.join(5000)
+        check(!worker.isAlive)
+        check(cancelled.get())
+        check(readCalls.get() == 1)
+        check(store.load()?.blocks("ads.example.com") == true)
+        check(dir.listFiles()?.none { it.name.endsWith(".part") } == true)
         val second = "new.example.net\nother.example.org\n".toByteArray()
         store.update { ByteArrayInputStream(second) }
         check(store.load()?.blocks("ads.example.com") == false)

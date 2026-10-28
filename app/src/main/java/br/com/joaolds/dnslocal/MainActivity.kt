@@ -33,6 +33,7 @@ class MainActivity : Activity() {
     private lateinit var updateList: Button
     @Volatile private var updatingList = false
     private var statusLoader: Thread? = null
+    private var updateThread: Thread? = null
     private data class DnsSelection(
         val primary: String,
         val secondary: String?,
@@ -101,6 +102,9 @@ class MainActivity : Activity() {
         // Do not keep parsing a large blocklist for a closed screen.
         statusLoader?.interrupt()
         statusLoader = null
+        // Cancel the manual network update when this screen closes.
+        updateThread?.interrupt()
+        updateThread = null
         super.onDestroy()
     }
 
@@ -228,7 +232,7 @@ class MainActivity : Activity() {
         updatingList = true
         updateList.isEnabled = false
         listStatus.setText(R.string.blocklist_downloading)
-        Thread({
+        updateThread = Thread({
             val result = runCatching {
                 HaGeZiListDownloader().refresh(listStore())
             }
@@ -245,7 +249,7 @@ class MainActivity : Activity() {
                     }
                 )
             }
-        }, "dns-list-manual-update").start()
+        }, "dns-list-manual-update").apply { start() }
     }
 
     companion object { private const val REQUEST_VPN = 101 }
