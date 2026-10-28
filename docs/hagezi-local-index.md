@@ -24,3 +24,10 @@ Créditos e fonte: [HaGeZi DNS Blocklists](https://github.com/hagezi/dns-blockli
 Os domínios ASCII comuns passam pela validação de sintaxe sem chamar `java.net.IDN.toASCII` a cada pesquisa. Nomes com Unicode ou prefixo `xn--` continuam usando a conversão/validação IDN. O matching, deduplicação e índice imutável permanecem os mesmos.
 
 A regressão independente em Kotlin/JVM passou com ASCII, normalização de maiúsculas, Unicode/punycode, domínios inválidos, sufixos e um **índice sintético de 50.000 entradas**. Os testes não usaram nem redistribuíram dados da HaGeZi. Isso é uma otimização de caminho de código: não constitui medição de bateria, RAM ou CPU em Android real.
+
+## Resiliência e cancelamento, sem polling
+
+- O armazenamento rejeita imediatamente um `InputStream.read` que retorne **zero bytes sem EOF**, para não rodar um laço sem progresso. Uma falha de leitura preserva a última versão íntegra.
+- O parser de até 250.000 domínios confere o sinal de interrupção durante o **processamento já em andamento** e encerra a leitura quando a VPN cancela a sessão. Isso não faz sondagens de rede nem adiciona timer.
+- A tela interrompe a leitura usada para exibir o estado da lista ao ser destruída (por exemplo, ao fechar/girar o aplicativo). A VPN continua usando a própria cópia imutável da lista por sessão.
+- Testes Kotlin/JVM de fluxos sintéticos passaram para leitura zerada, preservação do cache e cancelamento. A otimização ainda **não foi medida em Android**.
