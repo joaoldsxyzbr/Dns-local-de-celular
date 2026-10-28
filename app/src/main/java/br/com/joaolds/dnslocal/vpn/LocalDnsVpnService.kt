@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
+import android.os.Handler
+import android.os.Looper
 import android.system.OsConstants
 import br.com.joaolds.dnslocal.MainActivity
 import br.com.joaolds.dnslocal.R
@@ -56,6 +58,8 @@ class LocalDnsVpnService : VpnService() {
     private val generation = AtomicLong(0L)
     private var tun: ParcelFileDescriptor? = null
     private var reader: Thread? = null
+    private var loader: Thread? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var workers: ThreadPoolExecutor? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -64,6 +68,36 @@ class LocalDnsVpnService : VpnService() {
         publish(Status.STARTING)
         try {
             createForegroundNotification()
+            val epoch = generation.incrementAndGet()
+            val selection = Intent(intent)
+            loader = Thread({
+                val list = if (selection.getBooleanExtra(EXTRA_BLOCK_ENABLED, true))
+                    HaGeZiListStore(File(filesDir, "dns-lists")).load() else null
+                if (Thread.currentThread().isInterrupted) return@Thread
+                mainHandler.post {
+                    if (generation.get() != epoch || status != Status.STARTING) return@post
+                    try { establishTunnel(selection, list, epoch) }
+                    catch (_: Exception) {
+                        stopTunnel()
+                        publish(Status.ERROR)
+                        stopSelfResult(startId)
+                    }
+                }
+            }, "dns-list-session-loader").apply { start() }
+        } catch (_: Exception) {
+            stopTunnel()
+            publish(Status.ERROR)
+            stopSelfResult(startId)
+        }
+        return START_NOT_STICKY
+    }
+
+    /** Android main thread: called only after the single background list parse. */
+    private fun establishTunnel(
+        intent: Intent,
+        list: br.com.joaolds.dnslocal.blocklist.DomainBlocklist?,
+        epoch: Long
+    ) {
             val server = parseServer(intent.getStringExtra(EXTRA_PRIMARY))
                 ?: throw IllegalArgumentException("Invalid primary IPv4 DNS")
             val secondaryEnabled = intent.getBooleanExtra(EXTRA_USE_SECONDARY, false)
@@ -95,9 +129,7 @@ class LocalDnsVpnService : VpnService() {
                 upstream.resolve(request, destination)
             }
             // One immutable snapshot per VPN session, never a download per DNS query.
-            val list = if (intent.getBooleanExtra(EXTRA_BLOCK_ENABLED, true)) {
-                HaGeZiListStore(File(filesDir, "dns-lists")).load()
-            } else null
+
             val filter = DnsDomainFilter(list) { request ->
                 selection.resolve(request, server, secondary, secondaryEnabled)
             }
@@ -111,17 +143,10 @@ class LocalDnsVpnService : VpnService() {
             )
             workers = pool
             running = true
-            val epoch = generation.incrementAndGet()
             reader = Thread({ pumpPackets(descriptor, processor, pool, dnsAddress, epoch) }, "dns-tun-reader")
             if (list != null) createForegroundNotification(true)
             publish(if (list != null) Status.RUNNING_FILTER else Status.RUNNING)
             reader?.start()
-        } catch (_: Exception) {
-            stopTunnel()
-            publish(Status.ERROR)
-            stopSelf()
-        }
-        return START_NOT_STICKY // Never restart without explicit user action.
     }
 
     private fun pumpPackets(
@@ -232,6 +257,8 @@ class LocalDnsVpnService : VpnService() {
         tun = null
         reader?.interrupt()
         reader = null
+        loader?.interrupt()
+        loader = null
     }
 
     override fun onRevoke() {
