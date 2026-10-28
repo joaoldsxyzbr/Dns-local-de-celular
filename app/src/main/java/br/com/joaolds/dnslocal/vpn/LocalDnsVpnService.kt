@@ -17,6 +17,7 @@ import br.com.joaolds.dnslocal.dns.DnsDomainFilter
 import br.com.joaolds.dnslocal.dns.DnsPacketCodec
 import br.com.joaolds.dnslocal.dns.DnsFailoverResolver
 import br.com.joaolds.dnslocal.dns.DnsTunnelProcessor
+import br.com.joaolds.dnslocal.dns.DnsTcpTunnelProcessor
 import br.com.joaolds.dnslocal.dns.DnsUpstreamClient
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -61,6 +62,7 @@ class LocalDnsVpnService : VpnService() {
     private var loader: Thread? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var workers: ThreadPoolExecutor? = null
+    private var tcpWorkers: ThreadPoolExecutor? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action != ACTION_START) return START_NOT_STICKY
@@ -142,8 +144,19 @@ class LocalDnsVpnService : VpnService() {
                 ThreadPoolExecutor.AbortPolicy()
             )
             workers = pool
+            // A single TCP worker preserves packet order within each connection.
+            // The queue is bounded, and no idle loop or periodic task is created.
+            val tcpPool = ThreadPoolExecutor(
+                1, 1, 0L, TimeUnit.MILLISECONDS,
+                ArrayBlockingQueue(48),
+                ThreadPoolExecutor.AbortPolicy()
+            )
+            tcpWorkers = tcpPool
+            val tcpProcessor = DnsTcpTunnelProcessor(dnsAddress, filter::resolve)
             running = true
-            reader = Thread({ pumpPackets(descriptor, processor, pool, dnsAddress, epoch) }, "dns-tun-reader")
+            reader = Thread({
+                pumpPackets(descriptor, processor, tcpProcessor, pool, tcpPool, dnsAddress, epoch)
+            }, "dns-tun-reader")
             createForegroundNotification(filterLoaded = list != null)
             publish(if (list != null) Status.RUNNING_FILTER else Status.RUNNING)
             reader?.start()
@@ -152,7 +165,9 @@ class LocalDnsVpnService : VpnService() {
     private fun pumpPackets(
         descriptor: ParcelFileDescriptor,
         processor: DnsTunnelProcessor,
+        tcpProcessor: DnsTcpTunnelProcessor,
         pool: ThreadPoolExecutor,
+        tcpPool: ThreadPoolExecutor,
         dnsAddress: Int,
         epoch: Long
     ) {
@@ -164,6 +179,19 @@ class LocalDnsVpnService : VpnService() {
                     val count = input.read(buffer)
                     if (count <= 0) break
                     val packet = buffer.copyOf(count)
+                    if (count > 9 && packet[9].toInt() and 0xff == 6) {
+                        val tcpTask = Runnable {
+                            for (reply in tcpProcessor.reply(packet, packet.size)) {
+                                if (isCurrent(epoch)) writePacket(output, reply, epoch)
+                            }
+                        }
+                        try {
+                            tcpPool.execute(tcpTask)
+                        } catch (_: RejectedExecutionException) {
+                            // A full TCP queue drops work; the client handles retransmission.
+                        }
+                        continue
+                    }
                     val task = Runnable {
                         val answer = processor.reply(packet, packet.size)
                         if (answer != null && isCurrent(epoch)) writePacket(output, answer, epoch)
@@ -256,6 +284,8 @@ class LocalDnsVpnService : VpnService() {
         generation.incrementAndGet()
         workers?.shutdownNow()
         workers = null
+        tcpWorkers?.shutdownNow()
+        tcpWorkers = null
         try { tun?.close() } catch (_: IOException) {}
         tun = null
         reader?.interrupt()
