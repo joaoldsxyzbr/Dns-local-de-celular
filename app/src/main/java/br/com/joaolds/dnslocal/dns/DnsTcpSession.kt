@@ -1,6 +1,6 @@
 package br.com.joaolds.dnslocal.dns
 
-/** Event-driven, single-request DNS/TCP session model. Not wired to VpnService. */
+/** Event-driven single-request DNS/TCP session, invoked from the VPN's bounded TCP worker. */
 internal class DnsTcpSession(
     serverInitialSequence: Long,
     private val resolve: (ByteArray) -> ByteArray?

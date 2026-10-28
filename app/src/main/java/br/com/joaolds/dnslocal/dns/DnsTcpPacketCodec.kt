@@ -1,6 +1,6 @@
 package br.com.joaolds.dnslocal.dns
 
-/** Codec only; does NOT implement TCP state or enable TCP DNS in the VPN. */
+/** IPv4/TCP packet codec used by the VPN; connection state lives in DnsTcpSession. */
 internal object DnsTcpPacketCodec {
     private fun u(b: ByteArray, i: Int) = b[i].toInt() and 255
     private fun word(b: ByteArray, i: Int) = (u(b,i) shl 8) or u(b,i+1)

@@ -31,7 +31,7 @@ internal class DnsFailoverResolver(
             if (it.size !in 12..1472) return@takeIf false
             val rcode = it[3].toInt() and 0x0f
             DnsPacketCodec.isMatchingResponse(request, it) &&
-                (it[2].toInt() and 0x02) == 0 && // TC=1 requires TCP, not supported yet.
+                (it[2].toInt() and 0x02) == 0 && // Reject TC=1: upstream transport tries TCP before optional backup.
                 rcode != 2 && rcode != 5 // SERVFAIL/REFUSED allow optional fallback.
         }
     }
