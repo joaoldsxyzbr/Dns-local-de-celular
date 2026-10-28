@@ -25,3 +25,11 @@ O complemento `DnsTcpMessageFramer` acumula, sob limite estrito de 1.474 bytes, 
 ## Correção no limite de consultas TCP reagrupadas (28/10/2026)
 
 A leitura `singleDnsQuery` antes limitava o pacote prefixado a 1.460 bytes (1.458 bytes úteis), o que rejeitava indevidamente uma consulta DNS válida de 1.472 bytes após remontagem por `DnsTcpMessageFramer`. O limite agora aceita até **1.474 bytes de framing** (prefixo de dois bytes + 1.472 bytes DNS), mantendo a rejeição de 1.473 bytes DNS. O teste de regressão foi reproduzido com `kotlinc`/JVM (falhou antes, passou após correção) e adicionado aos testes de codec e framing; não foi compilado em Android.
+
+## Sessão TCP por eventos — componente isolado (28/10/2026)
+
+O novo `DnsTcpSession` é uma máquina de estados **para uma única conexão e uma única consulta DNS/TCP**. Processa pacotes recebidos por chamada explícita a `accept`, sem `polling`, timers, sondagens, loops de espera ou trabalho periódico. Implementa SYN/SYN-ACK/ACK, sequência e confirmação esperadas (incluindo aritmética de 32 bits), leitura ordenada de fragmentos via `DnsTcpMessageFramer`, ACK de segmentos fora de ordem, resposta limitada ao MTU, FIN e descarte de payloads malformados. A retransmissão da resposta em memória só ocorre quando chega novamente o último segmento da consulta, com sequência e ACK correspondentes; **não existe retransmissão programada por tempo**.
+
+O teste `sh tools/test-tcp-session.sh` cobre o handshake, SYN repetido, consulta dividida em segmentos, chegada fora de ordem, resposta, retransmissão sem nova resolução DNS, ACK errado, fechamento, prefixo inválido, falha do resolvedor com SERVFAIL e volta do contador de sequência (32 bits). Parte desses cenários passou em ensaio Kotlin/JVM com interfaces equivalentes às classes do repositório; o script versionado deve ser executado no checkout completo para assegurar a integração.
+
+**Não integrar diretamente ao VpnService ainda:** faltam a tabela de conexões com limite explícito e tratamento de colisões, seleção de sequência inicial com entropia adequada, negociação MSS/janela e fluxos de congestionamento, retransmissões/ACKs de dados sob perda real, FIN/RST em todas as condições, validação de tráfego real e testes Android. Não anunciar TCP DNS do celular como pronto. O código não altera a rota VPN nem os workers ativos.

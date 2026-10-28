@@ -53,7 +53,8 @@ Ordem: validar build da estrutura Android → provar viabilidade DNS local com `
 
 ## Incrementos recentes — protocolo TCP e inicialização
 
-- Um codec experimental `DnsTcpPacketCodec` valida e constrói segmentos IPv4/TCP em Kotlin puro. **Ainda não está ligado ao TUN**: handshake, estado/retransmissão e fragmentação TCP continuam pendentes. Teste JVM sob demanda: `sh tools/test-tcp-packet-core.sh`.
+- Um codec experimental `DnsTcpPacketCodec` valida e constrói segmentos IPv4/TCP em Kotlin puro.
+- O componente isolado `DnsTcpSession` modela o handshake e **uma única consulta** por conexão em modo reativo (sem polling). Ainda falta integrar com um controlador seguro de conexões e com o TUN. Teste sob demanda: `sh tools/test-tcp-session.sh`. **Ainda não está ligado ao TUN**: handshake, estado/retransmissão e fragmentação TCP continuam pendentes. Teste JVM sob demanda: `sh tools/test-tcp-packet-core.sh`.
 - O índice HaGeZi agora é carregado **uma única vez por inicialização, em thread separada**, antes de estabelecer a VPN; geração de sessão invalida resultados antigos após parar/reiniciar. Durante a carga, a interface e notificação mostram início/preparação, não proteção ativa. **Não existe polling, atualização periódica ou job de fundo contínuo.**
 - Verificação estrutural da inicialização (não é teste Android): `python3 tools/test-vpn-startup-structure.py`. [Detalhes e limites](docs/dns-tcp-packet-foundation.md).
 
