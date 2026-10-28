@@ -10,6 +10,7 @@ import android.os.ParcelFileDescriptor
 import br.com.joaolds.dnslocal.MainActivity
 import br.com.joaolds.dnslocal.R
 import br.com.joaolds.dnslocal.dns.DnsPacketCodec
+import br.com.joaolds.dnslocal.dns.DnsFailoverResolver
 import br.com.joaolds.dnslocal.dns.DnsTunnelProcessor
 import br.com.joaolds.dnslocal.dns.DnsUpstreamClient
 import java.io.FileInputStream
@@ -33,6 +34,8 @@ class LocalDnsVpnService : VpnService() {
         const val ACTION_START = "br.com.joaolds.dnslocal.action.START_DNS"
         const val ACTION_STATUS = "br.com.joaolds.dnslocal.action.DNS_STATUS"
         const val EXTRA_PRIMARY = "primaryIpv4"
+        const val EXTRA_SECONDARY = "secondaryIpv4"
+        const val EXTRA_USE_SECONDARY = "useSecondary"
         const val DNS_IP = "198.18.0.1"
         private const val LOCAL_IP = "198.18.0.2"
         private const val CHANNEL_ID = "dns_local_connection"
@@ -57,6 +60,14 @@ class LocalDnsVpnService : VpnService() {
             createForegroundNotification()
             val server = parseServer(intent.getStringExtra(EXTRA_PRIMARY))
                 ?: throw IllegalArgumentException("Invalid primary IPv4 DNS")
+            val secondaryEnabled = intent.getBooleanExtra(EXTRA_USE_SECONDARY, false)
+            val secondary = if (secondaryEnabled) {
+                parseServer(intent.getStringExtra(EXTRA_SECONDARY))
+                    ?: throw IllegalArgumentException("Invalid secondary IPv4 DNS")
+            } else null
+            if (secondaryEnabled && secondary == server) {
+                throw IllegalArgumentException("Primary and secondary must differ")
+            }
             val dnsAddress = checkNotNull(DnsPacketCodec.parseIpv4Address(DNS_IP))
             val descriptor = Builder()
                 .setSession(getString(R.string.app_name))
@@ -69,8 +80,11 @@ class LocalDnsVpnService : VpnService() {
                 .establish() ?: throw IllegalStateException("VPN was not authorized")
             tun = descriptor
             val upstream = DnsUpstreamClient(protectSocket = { socket -> protect(socket) })
-            val processor = DnsTunnelProcessor(dnsAddress) {
-                upstream.resolve(it, server)
+            val selection = DnsFailoverResolver { request, destination ->
+                upstream.resolve(request, destination)
+            }
+            val processor = DnsTunnelProcessor(dnsAddress) { request ->
+                selection.resolve(request, server, secondary, secondaryEnabled)
             }
             val pool = ThreadPoolExecutor(
                 2, 2, 0L, TimeUnit.MILLISECONDS,
@@ -179,7 +193,8 @@ class LocalDnsVpnService : VpnService() {
         )
         val address = InetAddress.getByAddress(bytes) as Inet4Address
         if (address.isAnyLocalAddress || address.isLoopbackAddress ||
-            address.isMulticastAddress || address.isLinkLocalAddress) return null
+            address.isMulticastAddress || address.isLinkLocalAddress ||
+            (ip ushr 24) >= 224) return null
         return address
     }
 

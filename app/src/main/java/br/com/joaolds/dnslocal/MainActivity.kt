@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import br.com.joaolds.dnslocal.dns.DnsPacketCodec
@@ -20,7 +21,14 @@ class MainActivity : Activity() {
     private lateinit var start: Button
     private lateinit var stop: Button
     private lateinit var status: TextView
-    private var pendingServer: String? = null
+    private lateinit var secondaryInput: EditText
+    private lateinit var secondaryEnabled: Switch
+    private data class DnsSelection(
+        val primary: String,
+        val secondary: String?,
+        val backupEnabled: Boolean
+    )
+    private var pendingSelection: DnsSelection? = null
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             updateStatus()
@@ -34,7 +42,16 @@ class MainActivity : Activity() {
         start = findViewById(R.id.startDns)
         stop = findViewById(R.id.stopDns)
         status = findViewById(R.id.protectionStatus)
-        primary.setText(getPreferences(MODE_PRIVATE).getString("primaryIpv4", ""))
+        val prefs = getPreferences(MODE_PRIVATE)
+        primary.setText(prefs.getString("primaryIpv4", ""))
+        secondaryInput = findViewById(R.id.secondaryDnsInput)
+        secondaryEnabled = findViewById(R.id.secondaryDnsToggle)
+        secondaryInput.setText(prefs.getString("secondaryIpv4", ""))
+        secondaryEnabled.isChecked = prefs.getBoolean("secondaryEnabled", false)
+        secondaryInput.isEnabled = secondaryEnabled.isChecked
+        secondaryEnabled.setOnCheckedChangeListener { _, checked ->
+            secondaryInput.isEnabled = checked
+        }
         start.setOnClickListener { requestStart() }
         stop.setOnClickListener {
             stopService(Intent(this, LocalDnsVpnService::class.java))
@@ -60,34 +77,56 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    private fun isAllowedIpv4(value: String): Boolean {
+        val ip = DnsPacketCodec.parseIpv4Address(value) ?: return false
+        val first = ip ushr 24
+        return ip != 0 && ip != -1 &&
+            first !in listOf(0, 127, 169) &&
+            first < 224 &&
+            value != LocalDnsVpnService.DNS_IP && value != "198.18.0.2"
+    }
+
     private fun requestStart() {
         val server = primary.text.toString().trim()
-        val ip = DnsPacketCodec.parseIpv4Address(server)
-        if (ip == null || server == LocalDnsVpnService.DNS_IP || server == "198.18.0.2" ||
-            ip == 0 || ip == -1 || (ip ushr 24) == 127 ||
-            (ip ushr 28) == 0xE) {
+        if (!isAllowedIpv4(server)) {
             Toast.makeText(this, R.string.invalid_primary_dns, Toast.LENGTH_LONG).show()
             return
         }
-        getPreferences(MODE_PRIVATE).edit().putString("primaryIpv4", server).apply()
+        val enabled = secondaryEnabled.isChecked
+        val secondary = secondaryInput.text.toString().trim()
+        if (enabled && (!isAllowedIpv4(secondary) || secondary == server)) {
+            Toast.makeText(this, R.string.invalid_secondary_dns, Toast.LENGTH_LONG).show()
+            return
+        }
+        val selection = DnsSelection(server, if (enabled) secondary else null, enabled)
+        // Preserve the entered secondary address, but never send it to the
+        // service while backup is disabled.
+        getPreferences(MODE_PRIVATE).edit()
+            .putString("primaryIpv4", server)
+            .putString("secondaryIpv4", secondary)
+            .putBoolean("secondaryEnabled", enabled)
+            .apply()
         val request = VpnService.prepare(this)
         if (request == null) {
-            pendingServer = null
-            startDnsService(server)
+            pendingSelection = null
+            startDnsService(selection)
         } else {
-            pendingServer = server // Preserve the validated value across the consent dialog.
+            pendingSelection = selection
             @Suppress("DEPRECATION")
             startActivityForResult(request, REQUEST_VPN)
         }
     }
 
-    private fun startDnsService(server: String) {
+    private fun startDnsService(selection: DnsSelection) {
         val intent = Intent(this, LocalDnsVpnService::class.java)
             .setAction(LocalDnsVpnService.ACTION_START)
-            .putExtra(LocalDnsVpnService.EXTRA_PRIMARY, server)
+            .putExtra(LocalDnsVpnService.EXTRA_PRIMARY, selection.primary)
+            .putExtra(LocalDnsVpnService.EXTRA_USE_SECONDARY, selection.backupEnabled)
+        if (selection.backupEnabled) {
+            intent.putExtra(LocalDnsVpnService.EXTRA_SECONDARY, selection.secondary)
+        }
         try {
-            if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent)
-            else startService(intent)
+            startForegroundService(intent)
         } catch (_: RuntimeException) {
             Toast.makeText(this, R.string.vpn_start_failed, Toast.LENGTH_LONG).show()
         }
@@ -97,10 +136,10 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_VPN) {
-            val approvedServer = pendingServer
-            pendingServer = null
-            if (resultCode == RESULT_OK && approvedServer != null) {
-                startDnsService(approvedServer)
+            val approved = pendingSelection
+            pendingSelection = null
+            if (resultCode == RESULT_OK && approved != null) {
+                startDnsService(approved)
             } else {
                 Toast.makeText(this, R.string.vpn_permission_denied, Toast.LENGTH_LONG).show()
             }

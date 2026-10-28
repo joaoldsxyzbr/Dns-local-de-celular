@@ -92,13 +92,25 @@
             android:text="@string/primary_transport_note"
             android:textSize="12sp" />
 
-        <TextView
+        <Switch
+            android:id="@+id/secondaryDnsToggle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/secondary_off"
-            android:textColor="#14223C"
-            android:textSize="15sp" />
+            android:text="@string/secondary_toggle"
+            android:checked="false" />
+
+        <EditText
+            android:id="@+id/secondaryDnsInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/secondary_hint_address"
+            android:inputType="text"
+            android:singleLine="true"
+            android:maxLength="15"
+            android:importantForAutofill="no"
+            android:enabled="false" />
 
         <TextView
             android:layout_width="match_parent"

@@ -23,8 +23,8 @@ Versões iniciais verificadas nas documentações oficiais: **Android Gradle Plu
 - A **VPN local Android** tem autorização por `VpnService.prepare()`, notificação de serviço em primeiro plano, configuração de **DNS primário IPv4** informada pelo usuário, e botões iniciar/parar.
 - O túnel usa DNS virtual `198.18.0.1/32` e **apenas uma rota /32**: não instala rota padrão para a internet. O encaminhamento utiliza sockets protegidos por `VpnService.protect()`, até 2 consultas simultâneas e fila limitada.
 - A tela diferencia **DNS em execução (sem bloqueio de anúncios)** de filtragem. O resolvedor upstream atual usa **UDP/53 sem criptografia** e deve ser usado apenas como protótipo de teste, não como produto de privacidade pronto.
-- Em caso de falha, o processador responde `SERVFAIL`; não existe DNS secundário oculto.
-- **Ainda não comprovado em Android real:** comportamento da rota DNS-only, DNS Privado, IPv6, TCP/53, instalação do APK e consumo de bateria. Também faltam DNS reserva opcional, HaGeZi e proteção efetiva contra anúncios.
+- O DNS secundário/reserva agora tem controle explícito ligado/desligado, persistência local e fallback **somente em caso de falha do primário**. Desativado, não é configurado nem consultado. Em caso de falha dos servidores selecionados, o processador responde `SERVFAIL`.
+- **Ainda não comprovado em Android real:** comportamento da rota DNS-only, DNS Privado, IPv6, TCP/53, instalação do APK e consumo de bateria. Também faltam HaGeZi e proteção efetiva contra anúncios. O DNS secundário foi codificado, mas não validado em Android real.
 - Teste local de protocolo (Kotlin/JVM, não substitui build Android): `sh tools/test-dns-core.sh`.
 
 ## Histórico do núcleo DNS (etapa anterior)

@@ -10,7 +10,10 @@
     <string name="dns_section">SERVIDORES DNS</string>
     <string name="primary_pending">Primário: configuração pendente</string>
     <string name="secondary_off">Secundário (reserva): desativado</string>
-    <string name="secondary_hint">O secundário será opcional e poderá ficar completamente desligado.</string>
+    <string name="secondary_hint">Com a opção desligada, nenhuma consulta será enviada ao DNS de reserva. Alterações são aplicadas ao reiniciar o serviço.</string>
+    <string name="secondary_toggle">Usar DNS secundário (reserva)</string>
+    <string name="secondary_hint_address">IP do DNS de reserva (ex.: 9.9.9.9)</string>
+    <string name="invalid_secondary_dns">Informe um DNS secundário válido e diferente do primário ou desative a reserva.</string>
     <string name="blocklist_section">BLOQUEIO DE ANÚNCIOS</string>
     <string name="blocklist_default">Lista selecionada: HaGeZi Multi PRO Mini</string>
     <string name="blocklist_not_loaded">Lista ainda não carregada. Bloqueio inativo.</string>
