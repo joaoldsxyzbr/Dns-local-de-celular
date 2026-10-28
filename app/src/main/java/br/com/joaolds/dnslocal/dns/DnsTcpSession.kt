@@ -29,6 +29,7 @@ internal class DnsTcpSession(
     private var peerMss = 536
     private var peerFinSeen = false
     private var lastClientDataSequence = -1L
+    private var lastClientData = byteArrayOf()
     private var finalReplies: List<Reply> = emptyList()
 
     val isClosed get() = phase == Phase.CLOSED
@@ -77,6 +78,7 @@ internal class DnsTcpSession(
                 // Sender can retransmit last DNS payload if response/FIN was lost.
                 return if (segment.flags and ACK != 0 && segment.payload.isNotEmpty() &&
                     segment.sequence == lastClientDataSequence &&
+                    segment.payload.contentEquals(lastClientData) &&
                     finalReplies.isNotEmpty() && segment.acknowledgment == finalReplies[0].sequence
                 ) finalReplies else emptyList()
             }
@@ -97,6 +99,7 @@ internal class DnsTcpSession(
         if (segment.sequence != clientNext) return listOf(Reply(serverNext, clientNext, ACK))
         if (segment.payload.isNotEmpty()) {
             lastClientDataSequence = segment.sequence
+            lastClientData = segment.payload.copyOf()
             clientNext = plus(clientNext, segment.payload.size)
             val query = framer.accept(segment.payload)
             if (framer.isInvalid) {
