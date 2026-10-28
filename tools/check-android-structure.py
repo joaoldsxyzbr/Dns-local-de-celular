@@ -54,12 +54,12 @@ class AndroidPreflight(unittest.TestCase):
 
     def test_ui_ids_and_strings_exist(self):
         layout_xml = content("app/src/main/res/layout/activity_main.xml")
-        xml_ids = set(re.findall(r"@\\+id/([A-Za-z_][A-Za-z_0-9]*)", layout_xml))
-        referenced_ids = set(re.findall(r"R\\.id\\.([A-Za-z_][A-Za-z_0-9]*)", self.activity))
+        xml_ids = set(re.findall(r"@\+id/([A-Za-z_][A-Za-z_0-9]*)", layout_xml))
+        referenced_ids = set(re.findall(r"R\.id\.([A-Za-z_][A-Za-z_0-9]*)", self.activity))
         self.assertFalse(referenced_ids - xml_ids, f"Missing IDs: {referenced_ids - xml_ids}")
         all_strings = {x.get("name") for x in self.strings.findall("string")}
         references = set(re.findall(r"@string/([A-Za-z_][A-Za-z_0-9]*)", layout_xml))
-        references.update(re.findall(r"R\\.string\\.([A-Za-z_][A-Za-z_0-9]*)", self.service + self.activity))
+        references.update(re.findall(r"R\.string\.([A-Za-z_][A-Za-z_0-9]*)", self.service + self.activity))
         self.assertFalse(references - all_strings, f"Missing string keys: {references - all_strings}")
 
     def test_blocking_is_opt_in_and_secondary_is_opt_out(self):
