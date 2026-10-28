@@ -18,6 +18,20 @@ fun main() {
         val oversized = ByteArray(HaGeZiListStore.MAX_BYTES + 1) { 'a'.code.toByte() }
         check(runCatching { store.update { ByteArrayInputStream(oversized) } }.isFailure)
         check(store.load()?.size == 2)
+        // An InputStream that produces zero bytes without EOF must not spin forever.
+        val zeroRead = runCatching {
+            store.update {
+                object : ByteArrayInputStream(first) {
+                    private var firstRead = true
+                    override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                        if (firstRead) { firstRead = false; return 0 }
+                        return super.read(buffer, offset, length)
+                    }
+                }
+            }
+        }
+        check(zeroRead.isFailure)
+        check(store.load()?.size == 2) // Keep the previously saved valid copy.
         val second = "new.example.net\nother.example.org\n".toByteArray()
         store.update { ByteArrayInputStream(second) }
         check(store.load()?.blocks("ads.example.com") == false)

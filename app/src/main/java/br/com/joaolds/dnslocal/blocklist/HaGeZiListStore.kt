@@ -35,6 +35,7 @@ internal class HaGeZiListStore(
                     while (true) {
                         val received = source.read(buffer)
                         if (received < 0) break
+                        require(received > 0) { "Download stream returned no data" }
                         count += received
                         require(count <= MAX_BYTES) { "List download too large" }
                         target.write(buffer, 0, received)
