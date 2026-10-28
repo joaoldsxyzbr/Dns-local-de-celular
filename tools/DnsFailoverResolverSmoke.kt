@@ -75,5 +75,25 @@ fun failoverSmoke() {
     check(resolver.resolve(request, a, b, true)?.contentEquals(valid) == true)
     check(calls == listOf(a, b)) // Short malformed response cannot crash the resolver.
 
+    // UDP truncated responses require a DNS-over-TCP retry, currently unsupported.
+    // Try the configured backup if enabled, otherwise fail closed (SERVFAIL upstream).
+    calls.clear()
+    val truncated = valid.copyOf().also { it[2] = (it[2].toInt() or 0x02).toByte() }
+    resolver = DnsFailoverResolver { _, ip ->
+        calls.add(ip)
+        if (ip == a) truncated else valid
+    }
+    check(resolver.resolve(request, a, b, true)?.contentEquals(valid) == true)
+    check(calls == listOf(a, b)) // Backup succeeds with a complete UDP reply.
+
+    calls.clear()
+    check(resolver.resolve(request, a, b, false) == null)
+    check(calls == listOf(a)) // Backup disabled means no traffic to backup.
+
+    calls.clear()
+    resolver = DnsFailoverResolver { _, ip -> calls.add(ip); truncated }
+    check(resolver.resolve(request, a, b, true) == null)
+    check(calls == listOf(a, b)) // Never return either truncated response as complete.
+
     println("OK: optional DNS secondary failover checks passed")
 }

@@ -56,3 +56,7 @@ O teste `packetIntegritySmoke()` reproduziu falha contra a implementação anter
 O campo UDP Length **pode ser menor** que o payload IPv4 (área excedente definida pelo [RFC 9868](https://www.rfc-editor.org/rfc/rfc9868.html)). O codec aceita o excedente sem incluí-lo na consulta DNS nem no checksum UDP, mas rejeita comprimentos que excedam os dados IP. Os testes `packetIntegritySmoke()` cobrem o caso de área excedente e o caso de comprimento inválido. A afirmação anterior de que os comprimentos deveriam ser idênticos foi corrigida após consultar o padrão oficial.
 
 O script `tools/test-filter-pipeline.sh` inclui o módulo `DnsResponseValidator.kt`, introduzido numa etapa anterior, para compilar sem dependências ocultas. A verificação estática e os testes Kotlin locais não substituem o Android SDK nem o teste do APK.
+
+## Respostas truncadas (TC=1)
+
+O resolvedor de DNS por UDP não aceita respostas com o bit `TC` (truncadas) como respostas completas. A resposta truncada provoca uma tentativa no servidor DNS de reserva **somente se a reserva estiver ativada**; caso contrário, ou se o segundo servidor também truncar, o túnel devolve `SERVFAIL` em vez de anunciar uma resolução completa. Há teste de regressão em `DnsFailoverResolverSmoke.kt`. **Não foi implementado DNS via TCP/53:** respostas grandes que exigem TCP continuam sem suporte; o comportamento em Android real ainda deve ser validado.
