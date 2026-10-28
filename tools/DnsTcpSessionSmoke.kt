@@ -26,6 +26,8 @@ fun main() {
     check(replies.size == 2 && calls == 1)
     check(replies[0].flags == 0x18 && replies[0].payload.copyOfRange(2, replies[0].payload.size).contentEquals(answer))
     check(replies[1].flags == 0x11 && replies[1].sequence == 501 + answer.size + 2L)
+    // Wrong ACK cannot retrieve the cached response from a closing session.
+    check(flow.accept(packet(1006, 800, 0x18, wire.copyOfRange(5, wire.size))).isEmpty())
     check(flow.accept(packet(1006, 501, 0x18, wire.copyOfRange(5, wire.size))).size == 2)
     check(calls == 1) // A retransmission never repeats a DNS upstream query.
     check(flow.accept(packet(1020, replies[1].sequence + 1, DnsTcpSession.ACK)).isEmpty())
