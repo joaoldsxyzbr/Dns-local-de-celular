@@ -23,7 +23,9 @@ fun upstreamSmoke() {
                 check(received.data.copyOf(received.length).contentEquals(query))
                 val valid = requireNotNull(DnsPacketCodec.servfail(query))
                 val wrong = valid.copyOf().also { it[1] = 0x77 }
+                val wrongQuestion = valid.copyOf().also { it[13] = 'b'.code.toByte() }
                 server.send(DatagramPacket(wrong, wrong.size, received.socketAddress))
+                server.send(DatagramPacket(wrongQuestion, wrongQuestion.size, received.socketAddress))
                 server.send(DatagramPacket(valid, valid.size, received.socketAddress))
             } catch (t: Throwable) {
                 unexpected.set(t)

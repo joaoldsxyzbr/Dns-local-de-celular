@@ -36,3 +36,7 @@ A `MainActivity` também retém o IP primário **já validado** enquanto o siste
 ## Continuidade IPv6 na VPN DNS-only
 
 A documentação Android de `VpnService.Builder.allowFamily` especifica que famílias de endereços não configuradas ficam **bloqueadas** por padrão. Como a configuração experimental intercepta exclusivamente IPv4, adicionamos `.allowFamily(OsConstants.AF_INET6)` para permitir que conexões IPv6 **sigam pela rede subjacente**, sem capturá-las. Isso **não é bloqueio DNS IPv6** nem assegura cobertura de consultas de aplicativos com DoH/DoT. Requer teste físico com IPv6 e com a configuração "bloquear conexões sem VPN" do Android. Fonte: https://developer.android.com/reference/android/net/VpnService.Builder#allowFamily(int).
+
+## Validação da correspondência da resposta upstream
+
+O validador de resposta DNS agora exige transação, opcode e **pergunta completa** correspondentes à consulta enviada: QNAME (sem diferenciar maiúsculas), QTYPE e QCLASS. Respostas com o mesmo ID e domínio diferente não são aceitas e podem levar a fallback/resposta SERVFAIL; perguntas comprimidas ou malformadas são rejeitadas nessa verificação. O teste `responseIntegritySmoke()` cobre respostas adulteradas e EDNS(0), e o teste do servidor UDP simulado envia uma resposta de nome diferente antes da válida. **Só foi executado o teste Kotlin/JVM isolado do novo validador** neste incremento; integração Android e regressão completa ainda requerem ambiente de build.

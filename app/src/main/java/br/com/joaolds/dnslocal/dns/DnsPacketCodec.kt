@@ -97,10 +97,7 @@ internal object DnsPacketCodec {
     }
 
     fun isMatchingResponse(query: ByteArray, response: ByteArray): Boolean =
-        query.size >= 12 && response.size >= 12 &&
-            query[0] == response[0] && query[1] == response[1] &&
-            (byte(response, 2) and 0x80 != 0) &&
-            (byte(query, 2) and 0x78) == (byte(response, 2) and 0x78)
+        DnsResponseValidator.matches(query, response)
 
     private fun questionEnd(data: ByteArray): Int? {
         if (word(data, 4) != 1) return null

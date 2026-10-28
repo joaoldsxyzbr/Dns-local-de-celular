@@ -58,6 +58,7 @@ fun main() {
     check(DnsPacketCodec.encodeReply(outgoing, ByteArray(1473)) == null)
     failoverSmoke()
     tunnelSmoke()
+    responseIntegritySmoke()
     upstreamSmoke()
     println("OK: DNS packet codec smoke checks passed")
 }

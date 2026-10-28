@@ -6,7 +6,10 @@ import java.net.InetAddress
 fun failoverSmoke() {
     val a = InetAddress.getByAddress(byteArrayOf(1, 1, 1, 1)) as Inet4Address
     val b = InetAddress.getByAddress(byteArrayOf(9, 9, 9, 9)) as Inet4Address
-    val request = byteArrayOf(0x12, 0x34, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0)
+    val request = byteArrayOf(
+        0x12, 0x34, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+        0x01, 'a'.code.toByte(), 0, 0, 1, 0, 1
+    )
     val valid = requireNotNull(DnsPacketCodec.servfail(request))
     val calls = mutableListOf<Inet4Address>()
 
