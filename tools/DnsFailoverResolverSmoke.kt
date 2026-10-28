@@ -67,5 +67,13 @@ fun failoverSmoke() {
     check(resolver.resolve(request, a, b, true)?.contentEquals(nxdomain) == true)
     check(calls == listOf(a)) // NXDOMAIN isn't a transport failure.
 
+    calls.clear()
+    resolver = DnsFailoverResolver { _, ip ->
+        calls.add(ip)
+        if (ip == a) ByteArray(0) else valid
+    }
+    check(resolver.resolve(request, a, b, true)?.contentEquals(valid) == true)
+    check(calls == listOf(a, b)) // Short malformed response cannot crash the resolver.
+
     println("OK: optional DNS secondary failover checks passed")
 }
