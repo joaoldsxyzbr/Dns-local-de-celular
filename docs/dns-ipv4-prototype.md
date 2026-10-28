@@ -15,6 +15,6 @@ Resultado observado localmente: `OK: DNS packet codec smoke checks passed`. Os t
 ## Restrições importantes
 
 - Suporta apenas IPv4 + UDP/53, com MTU 1500. TCP DNS, IPv6, EDNS/truncamento, fragmentação e mudança de rede **ainda precisam ser tratados/testados**.
-- Não existe serviço `VpnService` ligado à interface, nem DNS externo encaminhado: nenhum tráfego real foi filtrado.
+- Não existe serviço `VpnService` ligado à interface, nem DNS externo encaminhado: nenhum tráfego real foi filtrado. Um cliente UDP upstream separado foi adicionado, mas **ainda não está conectado à VPN**. Os sockets só podem enviar consultas após um callback obrigatório de proteção; falhas retornam nulo, sem resolver secundário implícito. O teste usa apenas um servidor UDP de loopback, verifica ID da transação, proteção obrigatória e comportamento diante de falhas.
 - Não há medições de consumo de bateria; o Android SDK não está instalado no ambiente disponível. Build Android `./gradlew :app:assembleDebug` ainda não foi executado.
 - Manter o CI para a validação final, conforme a decisão do projeto.
