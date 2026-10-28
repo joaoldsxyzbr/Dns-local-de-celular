@@ -86,6 +86,20 @@ class AndroidPreflight(unittest.TestCase):
         for forbidden in ("postDelayed(", "scheduleAtFixedRate(", "scheduleWithFixedDelay(", "Timer("):
             self.assertNotIn(forbidden, s + tcp + session)
 
+    def test_manual_blocklist_update_cancels_on_close(self):
+        activity = self.activity
+        store = content("app/src/main/java/br/com/joaolds/dnslocal/blocklist/HaGeZiListStore.kt")
+        downloader = content("app/src/main/java/br/com/joaolds/dnslocal/blocklist/HaGeZiListDownloader.kt")
+        destroy = activity.split("override fun onDestroy()", 1)[1].split(
+            "private fun isAllowedIpv4", 1
+        )[0]
+        self.assertIn("updateThread = Thread({", activity)
+        self.assertIn("updateThread?.interrupt()", destroy)
+        self.assertIn('dns-list-manual-update").apply { start() }', activity)
+        self.assertIn("checkNotCancelled()", store)
+        self.assertIn("checkNotCancelled()", downloader)
+        self.assertIn("StandardCopyOption.ATOMIC_MOVE", store)
+
     def test_blocklist_update_is_explicit_and_fail_safe(self):
         a = self.activity
         store = content("app/src/main/java/br/com/joaolds/dnslocal/blocklist/HaGeZiListStore.kt")
