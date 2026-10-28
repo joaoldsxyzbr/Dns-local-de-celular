@@ -63,7 +63,10 @@ internal class DnsTcpSession(
                     return emptyList()
                 }
                 // Sender can retransmit last DNS payload if response/FIN was lost.
-                return if (segment.payload.isNotEmpty() && segment.sequence == lastClientDataSequence) finalReplies else emptyList()
+                return if (segment.flags and ACK != 0 && segment.payload.isNotEmpty() &&
+                    segment.sequence == lastClientDataSequence &&
+                    finalReplies.isNotEmpty() && segment.acknowledgment == finalReplies[0].sequence
+                ) finalReplies else emptyList()
             }
             Phase.RECEIVING -> Unit
             Phase.CLOSED -> return emptyList()
