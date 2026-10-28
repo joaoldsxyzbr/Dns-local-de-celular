@@ -64,7 +64,7 @@ private fun endToEndTcpTunSmoke() {
 
     val synAck = send(1000, 0, DnsTcpSession.SYN).single()
     check(synAck.size == 44) // SYN-ACK advertises an MSS option.
-    check((synAck[33].toInt() and 255) == DnsTcpSession.SYN or DnsTcpSession.ACK)
+    check((synAck[33].toInt() and 255) == (DnsTcpSession.SYN or DnsTcpSession.ACK))
     check(processor.currentSessionCount() == 1)
     check(send(1001, 2001, DnsTcpSession.ACK).isEmpty())
     val replies = send(1001, 2001, DnsTcpSession.ACK or DnsTcpSession.PSH, framedRequest)
