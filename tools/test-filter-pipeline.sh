@@ -17,6 +17,7 @@ sources="app/src/main/java/br/com/joaolds/dnslocal"
 "$JAVA" -cp "$dir/store.jar" br.com.joaolds.dnslocal.blocklist.HaGeZiListStoreSmokeKt
 "$KOTLINC" "$sources/blocklist/DomainBlocklist.kt" \
     "$sources/dns/DnsPacketCodec.kt" \
+    "$sources/dns/DnsResponseValidator.kt" \
     "$sources/dns/DnsTunnelProcessor.kt" \
     "$sources/dns/DnsDomainFilter.kt" \
     tools/DnsPacketTestFixtures.kt tools/DnsDomainTunnelSmoke.kt -include-runtime -d "$dir/tunnel-filter.jar"

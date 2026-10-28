@@ -50,3 +50,7 @@ O fallback opcional passa a considerar respostas **SERVFAIL (RCODE 2)** e **REFU
 O processador de entrada IPv4/UDP agora exige comprimento IPv4 igual ao frame lido e valida o checksum do cabeçalho IPv4. O checksum UDP é validado com o pseudo-cabeçalho de origem/destino sempre que diferente de zero; o valor zero é permitido para IPv4. Quadros truncados, adulterados ou com bytes excedentes são descartados sem enviar consultas ao DNS. Não há dependência nova ou temporizador.
 
 O teste `packetIntegritySmoke()` reproduziu falha contra a implementação anterior e passou no código corrigido (JVM/Kotlin local). As fixtures anteriores foram adaptadas para construir quadros TUN com checksums íntegros. **Compilação Android, uso em aparelho e bateria permanecem sem validação.**
+
+## Verificação de comprimento UDP e regressão da suíte
+
+O protocolo exige que o comprimento UDP seja igual à quantidade de bytes após o cabeçalho IPv4: o parser passa a rejeitar datagramas UDP que declaram menos bytes do que o total IP, mesmo se seus checksums estiverem corretos. O teste `packetIntegritySmoke()` cobre essa situação gerando um pacote de comprimento incompatível com checksum UDP recalculado. O script `tools/test-filter-pipeline.sh` também inclui o módulo `DnsResponseValidator.kt`, introduzido numa etapa anterior, para compilar sem dependências ocultas. A verificação estática e os testes Kotlin locais não substituem o Android SDK e o teste do APK.

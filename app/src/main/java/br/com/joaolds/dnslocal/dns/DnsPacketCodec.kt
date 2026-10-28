@@ -45,7 +45,7 @@ internal object DnsPacketCodec {
         if (destination != virtualDnsIp) return null
         if (word(packet, headerSize + 2) != 53) return null
         val udpLength = word(packet, headerSize + 4)
-        if (udpLength < UDP_HEADER + 12 || udpLength > totalLength - headerSize) return null
+        if (udpLength < UDP_HEADER + 12 || udpLength != totalLength - headerSize) return null
         // UDP checksum 0 is permitted for IPv4; nonzero checksums must validate.
         if (word(packet, headerSize + 6) != 0) {
             val sum = OnesComplementSum()

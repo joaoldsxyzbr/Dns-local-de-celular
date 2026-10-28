@@ -20,6 +20,15 @@ fun packetIntegritySmoke() {
     check(DnsPacketCodec.decodeQuery(noUdpChecksum, noUdpChecksum.size, dns) != null) // IPv4 permits 0.
     val changedChecksum = frame.copyOf().also { it[26] = (it[26].toInt() xor 1).toByte() }
     check(DnsPacketCodec.decodeQuery(changedChecksum, changedChecksum.size, dns) == null)
+    // A short UDP datagram inside a larger IPv4 payload is not a valid DNS frame.
+    // Recalculate its UDP checksum so the rejection tests length, not corruption.
+    val shortenedUdp = frame.copyOf().also {
+        val shortLength = frame.size - 20 - 1
+        it[24] = (shortLength ushr 8).toByte()
+        it[25] = shortLength.toByte()
+        recalculateIpv4UdpChecksums(it)
+    }
+    check(DnsPacketCodec.decodeQuery(shortenedUdp, shortenedUdp.size, dns) == null)
     val trailingBytes = frame + byteArrayOf(1, 2, 3)
     check(DnsPacketCodec.decodeQuery(trailingBytes, trailingBytes.size, dns) == null)
     val oddFrame = makeIpv4DnsTunQuery(device, dns, 49312, query + 0.toByte())
