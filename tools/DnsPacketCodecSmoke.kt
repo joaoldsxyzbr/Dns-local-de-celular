@@ -56,6 +56,7 @@ fun main() {
     check(DnsPacketCodec.decodeQuery(input.copyOf().also { it[22] = 0x01 }, input.size, virtualDns) == null)
     check(DnsPacketCodec.decodeQuery(input.copyOf().also { it[2] = 0x7f }, input.size, virtualDns) == null)
     check(DnsPacketCodec.encodeReply(outgoing, ByteArray(1473)) == null)
+    failoverSmoke()
     tunnelSmoke()
     upstreamSmoke()
     println("OK: DNS packet codec smoke checks passed")

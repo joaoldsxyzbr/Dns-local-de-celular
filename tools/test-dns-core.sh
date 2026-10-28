@@ -7,6 +7,6 @@ dir="$(mktemp -d)"
 trap 'rm -rf "$dir"' EXIT HUP INT TERM
 "$KOTLINC" \
   app/src/main/java/br/com/joaolds/dnslocal/dns/*.kt \
-  tools/DnsPacketCodecSmoke.kt tools/DnsUpstreamClientSmoke.kt tools/DnsTunnelProcessorSmoke.kt \
+  tools/DnsPacketCodecSmoke.kt tools/DnsUpstreamClientSmoke.kt tools/DnsTunnelProcessorSmoke.kt tools/DnsFailoverResolverSmoke.kt \
   -include-runtime -d "$dir/dns-core-smoke.jar"
 "$JAVA" -jar "$dir/dns-core-smoke.jar"
