@@ -10,7 +10,10 @@ fun failoverSmoke() {
         0x12, 0x34, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0,
         0x01, 'a'.code.toByte(), 0, 0, 1, 0, 1
     )
-    val valid = requireNotNull(DnsPacketCodec.servfail(request))
+    val valid = requireNotNull(DnsPacketCodec.servfail(request)).also { it[3] = 0 } // NOERROR
+    val servfail = valid.copyOf().also { it[3] = 2 }
+    val refused = valid.copyOf().also { it[3] = 5 }
+    val nxdomain = valid.copyOf().also { it[3] = 3 }
     val calls = mutableListOf<Inet4Address>()
 
     var resolver = DnsFailoverResolver { _, ip -> calls.add(ip); valid }
@@ -49,5 +52,20 @@ fun failoverSmoke() {
     resolver = DnsFailoverResolver { _, ip -> calls.add(ip); if (ip == a) ByteArray(1473) else valid }
     check(resolver.resolve(request, a, b, true)?.contentEquals(valid) == true)
     check(calls == listOf(a, b))
+    for (failure in listOf(servfail, refused)) {
+        calls.clear()
+        resolver = DnsFailoverResolver { _, ip -> calls.add(ip); if (ip == a) failure else valid }
+        check(resolver.resolve(request, a, b, true)?.contentEquals(valid) == true)
+        check(calls == listOf(a, b))
+
+        calls.clear()
+        check(resolver.resolve(request, a, b, false) == null)
+        check(calls == listOf(a)) // Off means zero backup queries even on SERVFAIL/REFUSED.
+    }
+    calls.clear()
+    resolver = DnsFailoverResolver { _, ip -> calls.add(ip); nxdomain }
+    check(resolver.resolve(request, a, b, true)?.contentEquals(nxdomain) == true)
+    check(calls == listOf(a)) // NXDOMAIN isn't a transport failure.
+
     println("OK: optional DNS secondary failover checks passed")
 }

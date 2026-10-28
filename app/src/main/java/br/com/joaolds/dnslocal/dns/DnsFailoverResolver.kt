@@ -28,7 +28,9 @@ internal class DnsFailoverResolver(
             null
         }
         return reply?.takeIf {
-            it.size in 12..1472 && DnsPacketCodec.isMatchingResponse(request, it)
+            val rcode = it[3].toInt() and 0x0f
+            it.size in 12..1472 && DnsPacketCodec.isMatchingResponse(request, it) &&
+                rcode != 2 && rcode != 5 // SERVFAIL/REFUSED allow optional fallback.
         }
     }
 }

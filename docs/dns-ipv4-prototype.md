@@ -40,3 +40,7 @@ A documentação Android de `VpnService.Builder.allowFamily` especifica que fam�
 ## Validação da correspondência da resposta upstream
 
 O validador de resposta DNS agora exige transação, opcode e **pergunta completa** correspondentes à consulta enviada: QNAME (sem diferenciar maiúsculas), QTYPE e QCLASS. Respostas com o mesmo ID e domínio diferente não são aceitas e podem levar a fallback/resposta SERVFAIL; perguntas comprimidas ou malformadas são rejeitadas nessa verificação. O teste `responseIntegritySmoke()` cobre respostas adulteradas e EDNS(0), e o teste do servidor UDP simulado envia uma resposta de nome diferente antes da válida. **Só foi executado o teste Kotlin/JVM isolado do novo validador** neste incremento; integração Android e regressão completa ainda requerem ambiente de build.
+
+## DNS de reserva e códigos de erro
+
+O fallback opcional passa a considerar respostas **SERVFAIL (RCODE 2)** e **REFUSED (RCODE 5)** do primário como falhas elegíveis para tentar o DNS secundário. **NXDOMAIN (RCODE 3)** não gera fallback, pois pode indicar um nome inexistente ou bloqueado; o primário continua sendo o único consultado quando a chave de reserva está desativada. Testes unitários com DNS simulado cobrem essas situações. O transporte e a VPN ainda não foram validados no Android.
