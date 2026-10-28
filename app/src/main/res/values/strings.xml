@@ -39,5 +39,6 @@
     <string name="vpn_permission_denied">Permissão de VPN não concedida.</string>
     <string name="notification_channel">Conexão DNS local</string>
     <string name="notification_title">DNS Local: serviço experimental</string>
+    <string name="notification_description_starting">Preparando DNS local; o túnel ainda não está ativo.</string>
     <string name="notification_description">DNS por VPN local ativo, sem bloqueio de anúncios.</string>
 </resources>
