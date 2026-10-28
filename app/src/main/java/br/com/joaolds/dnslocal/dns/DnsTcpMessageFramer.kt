@@ -30,14 +30,14 @@ internal class DnsTcpMessageFramer(private val maxDnsBytes: Int = 1472) {
 
     companion object {
         /** Split a framed DNS reply into TCP-sized chunks, without exceeding IPv4 MTU 1500. */
-        fun frameResponse(response: ByteArray): List<ByteArray>? {
-            if (response.size !in 12..1472) return null
+        fun frameResponse(response: ByteArray, maxSegmentSize: Int = 1460): List<ByteArray>? {
+            if (response.size !in 12..1472 || maxSegmentSize !in 64..1460) return null
             val framed = ByteArray(response.size + 2)
             framed[0] = (response.size ushr 8).toByte()
             framed[1] = response.size.toByte()
             response.copyInto(framed, 2)
-            return (framed.indices step 1460).map { offset ->
-                framed.copyOfRange(offset, minOf(offset + 1460, framed.size))
+            return (framed.indices step maxSegmentSize).map { offset ->
+                framed.copyOfRange(offset, minOf(offset + maxSegmentSize, framed.size))
             }
         }
     }

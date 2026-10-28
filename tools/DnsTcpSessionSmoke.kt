@@ -58,5 +58,16 @@ fun main() {
     check(wrap.accept(packet(0xffffffffL, 0, DnsTcpSession.SYN)).single().acknowledgment == 0L)
     check(wrap.accept(packet(0, 0, DnsTcpSession.ACK)).isEmpty())
 
+    val largeDns = ByteArray(1472).also {
+        query.copyInto(it, 0)
+        it[2] = 0x81.toByte()
+    }
+    val largeSession = DnsTcpSession(400) { largeDns }
+    val synSegment = packet(800, 0, DnsTcpSession.SYN).copy(maximumSegmentSize = 536)
+    largeSession.accept(synSegment)
+    largeSession.accept(packet(801, 401, DnsTcpSession.ACK))
+    val chunked = largeSession.accept(packet(801, 401, 0x18, wire))
+    check(chunked.size == 4) // Three TCP data segments <=536 plus FIN.
+    check(chunked.dropLast(1).all { it.payload.size <= 536 })
     println("OK: event-driven TCP session SYN/ACK, framing, replay, FIN, wrap and failures")
 }

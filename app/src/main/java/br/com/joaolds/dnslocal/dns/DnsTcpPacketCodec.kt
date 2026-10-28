@@ -22,7 +22,8 @@ internal object DnsTcpPacketCodec {
         }
     }
     data class Segment(val sourceIp:Int,val destinationIp:Int,val sourcePort:Int,
-                       val sequence:Long,val acknowledgment:Long,val flags:Int,val payload:ByteArray)
+                       val sequence:Long,val acknowledgment:Long,val flags:Int,val payload:ByteArray,
+                       val maximumSegmentSize:Int=536)
 
     fun decode(p:ByteArray,length:Int,virtualDnsIp:Int):Segment? {
         if(length !in 40..1500 || length>p.size || u(p,0) ushr 4 != 4) return null
@@ -36,22 +37,47 @@ internal object DnsTcpPacketCodec {
         val sum=Sum()
         sum.bytes(p,12,8); sum.add(6); sum.add(length-ipHeader); sum.bytes(p,ipHeader,length-ipHeader)
         if(sum.result()!=0) return null
+        var mss=536 // RFC 879: default when the SYN does not include an MSS option.
+        val flags=u(p,ipHeader+13)
+        if(flags and 2 != 0) {
+            var pos=ipHeader+20
+            while(pos<ipHeader+tcpHeader) {
+                val kind=u(p,pos)
+                if(kind==0) break
+                if(kind==1) { pos++; continue }
+                if(pos+2>ipHeader+tcpHeader) return null
+                val len=u(p,pos+1)
+                if(len<2 || pos+len>ipHeader+tcpHeader) return null
+                if(kind==2) {
+                    if(len!=4) return null
+                    val offered=word(p,pos+2)
+                    if(offered<64) return null
+                    mss=minOf(offered,1460)
+                }
+                pos+=len
+            }
+        }
         return Segment(num(p,12).toInt(),virtualDnsIp,word(p,ipHeader),
-                       num(p,ipHeader+4),num(p,ipHeader+8),u(p,ipHeader+13),
-                       p.copyOfRange(ipHeader+tcpHeader,length))
+                       num(p,ipHeader+4),num(p,ipHeader+8),flags,
+                       p.copyOfRange(ipHeader+tcpHeader,length),mss)
     }
 
     fun encodeReply(query:Segment,sequence:Long,acknowledgment:Long,flags:Int,payload:ByteArray):ByteArray? {
         if(payload.size>1460 || flags !in 0..255 || sequence !in 0..0xffffffffL ||
            acknowledgment !in 0..0xffffffffL) return null
-        val p=ByteArray(40+payload.size)
+        val tcpHeader=if(flags and 2 != 0) 24 else 20 // Advertise MSS on SYN-ACK.
+        val p=ByteArray(20+tcpHeader+payload.size)
         p[0]=0x45; set16(p,2,p.size); p[8]=64; p[9]=6
         set32(p,12,query.destinationIp.toLong() and 0xffffffffL)
         set32(p,16,query.sourceIp.toLong() and 0xffffffffL)
         set16(p,20,53); set16(p,22,query.sourcePort)
         set32(p,24,sequence); set32(p,28,acknowledgment)
-        p[32]=0x50; p[33]=flags.toByte(); set16(p,34,65535)
-        payload.copyInto(p,40)
+        p[32]=((tcpHeader/4) shl 4).toByte()
+        p[33]=flags.toByte(); set16(p,34,65535)
+        if(tcpHeader==24) {
+            p[40]=2; p[41]=4; p[42]=0x05; p[43]=0xb4.toByte() // MSS 1460.
+        }
+        payload.copyInto(p,20+tcpHeader)
         set16(p,10,Sum().apply { bytes(p,0,20) }.result())
         val sum=Sum();sum.bytes(p,12,8);sum.add(6);sum.add(p.size-20);sum.bytes(p,20,p.size-20)
         val cs=sum.result();set16(p,36,if(cs==0)65535 else cs)

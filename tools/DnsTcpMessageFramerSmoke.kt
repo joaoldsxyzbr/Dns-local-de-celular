@@ -36,5 +36,8 @@ fun main() {
     check(!maximal.isInvalid)
     check(DnsTcpPacketCodec.singleDnsQuery(framedMaximal)?.contentEquals(maximalQuery) == true)
     check(DnsTcpPacketCodec.singleDnsQuery(byteArrayOf(0x05, 0xc1.toByte()) + ByteArray(1473)) == null)
+    val limited = requireNotNull(DnsTcpMessageFramer.frameResponse(answer, 536))
+    check(limited.map { it.size } == listOf(536,536,402))
+    check(DnsTcpMessageFramer.frameResponse(answer, 1) == null)
     println("OK: bounded TCP DNS framing and segmented reply smoke checks passed")
 }

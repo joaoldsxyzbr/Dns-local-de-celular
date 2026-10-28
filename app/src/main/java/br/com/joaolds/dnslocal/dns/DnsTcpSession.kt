@@ -26,6 +26,7 @@ internal class DnsTcpSession(
     private var serverNext = initialSeq
     private var clientNext = 0L
     private var originalSyn = 0L
+    private var peerMss = 536
     private var lastClientDataSequence = -1L
     private var finalReplies: List<Reply> = emptyList()
 
@@ -43,6 +44,7 @@ internal class DnsTcpSession(
             Phase.WAIT_SYN -> {
                 if (segment.flags and SYN == 0 || segment.flags and ACK != 0 || segment.payload.isNotEmpty()) return emptyList()
                 originalSyn = segment.sequence
+                peerMss = segment.maximumSegmentSize.coerceIn(64,1460)
                 clientNext = plus(originalSyn, 1)
                 serverNext = plus(initialSeq, 1)
                 phase = Phase.WAIT_ACK
@@ -89,7 +91,7 @@ internal class DnsTcpSession(
                     it.size in 12..1472 && DnsPacketCodec.isMatchingResponse(query, it) &&
                         it[2].toInt() and 2 == 0
                 } ?: DnsPacketCodec.servfail(query)
-                val chunks = response?.let { DnsTcpMessageFramer.frameResponse(it) }
+                val chunks = response?.let { DnsTcpMessageFramer.frameResponse(it, peerMss) }
                 if (chunks == null) {
                     phase = Phase.CLOSED
                     return listOf(Reply(serverNext, clientNext, RST or ACK))
