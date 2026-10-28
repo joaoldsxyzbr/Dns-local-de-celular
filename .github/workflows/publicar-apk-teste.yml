@@ -1,0 +1,93 @@
+name: Publicar APK experimental no GitHub Releases
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publicar-apk-teste.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publicar-pre-release:
+    name: Anexar APK já aprovado ao Release de testes
+    if: github.repository == 'joaoldsxyzbr/Dns-local-de-celular'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CI_RUN_ID: '40745907229'
+      CI_SHA: '15e838a3ff5a6d375949e5df369f37773b033ffb'
+      TAG: 'v0.1.0-beta.1'
+      ASSET_NAME: 'DNS-Local-0.1.0-beta.1.apk'
+    steps:
+      - name: Confirmar que a origem do APK passou no CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "joaoldsxyzbr/Dns-local-de-celular"
+          result="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID" --jq '.conclusion + " " + .head_sha')"
+          test "$result" = "success $CI_SHA" || {
+            echo "A origem do APK não foi aprovada pelo CI ou mudou de commit."
+            exit 1
+          }
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "O Release $TAG já existe; não substituir automaticamente."
+            exit 1
+          fi
+
+      - name: Baixar APK exato do CI aprovado
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          gh run download "$CI_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name dns-local-debug-apk --dir release
+          test -s release/app-debug.apk
+          mv release/app-debug.apk "release/$ASSET_NAME"
+          sha256sum "release/$ASSET_NAME" | tee release/SHA256SUMS.txt
+
+      - name: Criar pré-release com download direto para celular
+        shell: bash
+        run: |
+          set -euo pipefail
+          checksum="$(cut -d ' ' -f 1 release/SHA256SUMS.txt)"
+          cat > release/NOTAS.md <<EOF
+          ## DNS Local 0.1.0 — Beta de testes
+
+          APK de teste para instalar diretamente no celular Android (Android 8.0 ou superior).
+
+          **Aviso:** esta é uma pré-versão experimental, compilada em modo debug e assinada com chave de depuração. Não é uma versão final de produção. A VPN, o DNS TCP, o bloqueio e o consumo de bateria ainda precisam de testes em aparelho físico.
+
+          **Origem verificada:** [CI aprovado #5](https://github.com/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID), commit \`$CI_SHA\`. O APK anexado é o mesmo artefato gerado por esse CI, sem reconstrução.
+
+          **Arquivo:** \`$ASSET_NAME\`
+
+          **SHA-256:** \`$checksum\`
+
+          ### Instalação no celular
+          Baixe o arquivo APK nesta página, abra-o no Android e conceda autorização de instalação de aplicativos desta fonte quando solicitada. Abra o DNS Local e autorize a VPN somente se quiser testar.
+
+          **Atenção:** versões debug feitas por execuções diferentes podem usar assinaturas diferentes. Em caso de incompatibilidade ao atualizar, pode ser necessário desinstalar a versão anterior, o que remove as configurações salvas.
+
+          Não é necessário ativar CI nem fazer polling para usar o aplicativo. O app não faz atualização periódica da HaGeZi.
+          EOF
+          gh release create "$TAG" "release/$ASSET_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$CI_SHA" \
+            --title "DNS Local v0.1.0 Beta 1 (APK de testes)" \
+            --notes-file release/NOTAS.md \
+            --prerelease
+
+      - name: Conferir arquivo publicado no Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json url,isPrerelease,assets \
+            --jq '{url, isPrerelease, files: [.assets[].name]}'
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[].name' | grep -Fx "$ASSET_NAME"
