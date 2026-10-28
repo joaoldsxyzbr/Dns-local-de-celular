@@ -51,6 +51,12 @@ Versões iniciais verificadas nas documentações oficiais: **Android Gradle Plu
 
 Ordem: validar build da estrutura Android → provar viabilidade DNS local com `VpnService` → secundário opcional → listas/bloqueio → interface → otimização/testes → APK de testes.
 
+## Incrementos recentes — protocolo TCP e inicialização
+
+- Um codec experimental `DnsTcpPacketCodec` valida e constrói segmentos IPv4/TCP em Kotlin puro. **Ainda não está ligado ao TUN**: handshake, estado/retransmissão e fragmentação TCP continuam pendentes. Teste JVM sob demanda: `sh tools/test-tcp-packet-core.sh`.
+- O índice HaGeZi agora é carregado **uma única vez por inicialização, em thread separada**, antes de estabelecer a VPN; geração de sessão invalida resultados antigos após parar/reiniciar. Durante a carga, a interface e notificação mostram início/preparação, não proteção ativa. **Não existe polling, atualização periódica ou job de fundo contínuo.**
+- Verificação estrutural da inicialização (não é teste Android): `python3 tools/test-vpn-startup-structure.py`. [Detalhes e limites](docs/dns-tcp-packet-foundation.md).
+
 ## Limitações técnicas importantes
 
 - Sem root, a abordagem planejada utiliza uma **VPN local do Android exclusivamente para DNS**: requer permissão do sistema, exibe ícone/notificação e pode conflitar com outras VPNs.
