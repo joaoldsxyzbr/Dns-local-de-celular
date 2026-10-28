@@ -11,6 +11,12 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Switch
+import br.com.joaolds.dnslocal.blocklist.HaGeZiListDownloader
+import br.com.joaolds.dnslocal.blocklist.HaGeZiListStore
+import java.io.File
+import java.util.Date
+import java.text.DateFormat
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import br.com.joaolds.dnslocal.dns.DnsPacketCodec
@@ -23,6 +29,10 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var secondaryInput: EditText
     private lateinit var secondaryEnabled: Switch
+    private lateinit var blockingEnabled: Switch
+    private lateinit var listStatus: TextView
+    private lateinit var updateList: Button
+    @Volatile private var updatingList = false
     private data class DnsSelection(
         val primary: String,
         val secondary: String?,
@@ -52,6 +62,12 @@ class MainActivity : Activity() {
         secondaryEnabled.setOnCheckedChangeListener { _, checked ->
             secondaryInput.isEnabled = checked
         }
+        blockingEnabled = findViewById(R.id.blockingEnabled)
+        blockingEnabled.isChecked = prefs.getBoolean("blockEnabled", true)
+        listStatus = findViewById(R.id.blocklistStatus)
+        updateList = findViewById(R.id.updateBlocklist)
+        updateList.setOnClickListener { updateHaGeZi() }
+        refreshListStatus()
         start.setOnClickListener { requestStart() }
         stop.setOnClickListener {
             stopService(Intent(this, LocalDnsVpnService::class.java))
@@ -105,6 +121,7 @@ class MainActivity : Activity() {
             .putString("primaryIpv4", server)
             .putString("secondaryIpv4", secondary)
             .putBoolean("secondaryEnabled", enabled)
+            .putBoolean("blockEnabled", blockingEnabled.isChecked)
             .apply()
         val request = VpnService.prepare(this)
         if (request == null) {
@@ -122,6 +139,7 @@ class MainActivity : Activity() {
             .setAction(LocalDnsVpnService.ACTION_START)
             .putExtra(LocalDnsVpnService.EXTRA_PRIMARY, selection.primary)
             .putExtra(LocalDnsVpnService.EXTRA_USE_SECONDARY, selection.backupEnabled)
+            .putExtra(LocalDnsVpnService.EXTRA_BLOCK_ENABLED, blockingEnabled.isChecked)
         if (selection.backupEnabled) {
             intent.putExtra(LocalDnsVpnService.EXTRA_SECONDARY, selection.secondary)
         }
@@ -153,13 +171,67 @@ class MainActivity : Activity() {
                 LocalDnsVpnService.Status.OFF -> R.string.protection_off
                 LocalDnsVpnService.Status.STARTING -> R.string.protection_starting
                 LocalDnsVpnService.Status.RUNNING -> R.string.protection_dns_only
+                LocalDnsVpnService.Status.RUNNING_FILTER -> R.string.protection_dns_filter
                 LocalDnsVpnService.Status.ERROR -> R.string.protection_error
             }
         )
         start.isEnabled = state == LocalDnsVpnService.Status.OFF ||
             state == LocalDnsVpnService.Status.ERROR
         stop.isEnabled = state == LocalDnsVpnService.Status.STARTING ||
-            state == LocalDnsVpnService.Status.RUNNING
+            state == LocalDnsVpnService.Status.RUNNING ||
+            state == LocalDnsVpnService.Status.RUNNING_FILTER
+    }
+
+    private fun listStore(): HaGeZiListStore =
+        HaGeZiListStore(File(filesDir, "dns-lists"))
+
+    private fun refreshListStatus() {
+        Thread({
+            val loaded = listStore().load()
+            val updatedAt = File(filesDir, "dns-lists/hagezi-pro-mini-onlydomains.txt").lastModified()
+            runOnUiThread {
+                if (isDestroyed || updatingList) return@runOnUiThread
+                showListStatus(loaded?.size, updatedAt)
+            }
+        }, "dns-list-status").start()
+    }
+
+    private fun showListStatus(count: Int?, updatedAt: Long) {
+        listStatus.text = if (count == null) {
+            getString(R.string.blocklist_not_loaded)
+        } else {
+            getString(
+                R.string.blocklist_ready_format,
+                count,
+                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+                    .format(Date(updatedAt))
+            )
+        }
+    }
+
+    private fun updateHaGeZi() {
+        if (updatingList) return
+        updatingList = true
+        updateList.isEnabled = false
+        listStatus.setText(R.string.blocklist_downloading)
+        Thread({
+            val result = runCatching {
+                HaGeZiListDownloader().refresh(listStore())
+            }
+            runOnUiThread {
+                if (isDestroyed) return@runOnUiThread
+                updatingList = false
+                updateList.isEnabled = true
+                result.fold(
+                    onSuccess = { list ->
+                        showListStatus(list.size, File(filesDir, "dns-lists/hagezi-pro-mini-onlydomains.txt").lastModified())
+                    },
+                    onFailure = {
+                        listStatus.setText(R.string.blocklist_update_failed)
+                    }
+                )
+            }
+        }, "dns-list-manual-update").start()
     }
 
     companion object { private const val REQUEST_VPN = 101 }

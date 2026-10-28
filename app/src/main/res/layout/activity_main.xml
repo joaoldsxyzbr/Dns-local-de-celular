@@ -137,13 +137,45 @@
             android:textColor="#14223C"
             android:textSize="15sp" />
 
+        <Switch
+            android:id="@+id/blockingEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/blocklist_toggle"
+            android:checked="true" />
+
+        <Button
+            android:id="@+id/updateBlocklist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/blocklist_update_button" />
+
         <TextView
+            android:id="@+id/blocklistStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:text="@string/blocklist_not_loaded"
             android:textColor="#8A3440"
             android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/blocklist_restart_note"
+            android:textColor="#45566D"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/blocklist_attribution"
+            android:textColor="#45566D"
+            android:textSize="12sp" />
 
         <TextView
             android:layout_width="match_parent"

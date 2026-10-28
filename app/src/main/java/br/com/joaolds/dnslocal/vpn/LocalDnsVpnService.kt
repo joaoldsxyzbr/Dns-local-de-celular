@@ -9,6 +9,8 @@ import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import br.com.joaolds.dnslocal.MainActivity
 import br.com.joaolds.dnslocal.R
+import br.com.joaolds.dnslocal.blocklist.HaGeZiListStore
+import br.com.joaolds.dnslocal.dns.DnsDomainFilter
 import br.com.joaolds.dnslocal.dns.DnsPacketCodec
 import br.com.joaolds.dnslocal.dns.DnsFailoverResolver
 import br.com.joaolds.dnslocal.dns.DnsTunnelProcessor
@@ -16,6 +18,7 @@ import br.com.joaolds.dnslocal.dns.DnsUpstreamClient
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.File
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.util.concurrent.ArrayBlockingQueue
@@ -36,6 +39,7 @@ class LocalDnsVpnService : VpnService() {
         const val EXTRA_PRIMARY = "primaryIpv4"
         const val EXTRA_SECONDARY = "secondaryIpv4"
         const val EXTRA_USE_SECONDARY = "useSecondary"
+        const val EXTRA_BLOCK_ENABLED = "blockEnabled"
         const val DNS_IP = "198.18.0.1"
         private const val LOCAL_IP = "198.18.0.2"
         private const val CHANNEL_ID = "dns_local_connection"
@@ -44,7 +48,7 @@ class LocalDnsVpnService : VpnService() {
             private set
     }
 
-    enum class Status { OFF, STARTING, RUNNING, ERROR }
+    enum class Status { OFF, STARTING, RUNNING, RUNNING_FILTER, ERROR }
 
     @Volatile private var running = false
     private val generation = AtomicLong(0L)
@@ -83,8 +87,15 @@ class LocalDnsVpnService : VpnService() {
             val selection = DnsFailoverResolver { request, destination ->
                 upstream.resolve(request, destination)
             }
-            val processor = DnsTunnelProcessor(dnsAddress) { request ->
+            // One immutable snapshot per VPN session, never a download per DNS query.
+            val list = if (intent.getBooleanExtra(EXTRA_BLOCK_ENABLED, true)) {
+                HaGeZiListStore(File(filesDir, "dns-lists")).load()
+            } else null
+            val filter = DnsDomainFilter(list) { request ->
                 selection.resolve(request, server, secondary, secondaryEnabled)
+            }
+            val processor = DnsTunnelProcessor(dnsAddress) { request ->
+                filter.resolve(request)
             }
             val pool = ThreadPoolExecutor(
                 2, 2, 0L, TimeUnit.MILLISECONDS,
@@ -95,7 +106,8 @@ class LocalDnsVpnService : VpnService() {
             running = true
             val epoch = generation.incrementAndGet()
             reader = Thread({ pumpPackets(descriptor, processor, pool, dnsAddress, epoch) }, "dns-tun-reader")
-            publish(Status.RUNNING)
+            if (list != null) createForegroundNotification(true)
+            publish(if (list != null) Status.RUNNING_FILTER else Status.RUNNING)
             reader?.start()
         } catch (_: Exception) {
             stopTunnel()
@@ -161,7 +173,7 @@ class LocalDnsVpnService : VpnService() {
         }
     }
 
-    private fun createForegroundNotification() {
+    private fun createForegroundNotification(filterLoaded: Boolean = false) {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(
@@ -177,7 +189,8 @@ class LocalDnsVpnService : VpnService() {
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentTitle(getString(R.string.notification_title))
-            .setContentText(getString(R.string.notification_description))
+            .setContentText(getString(if (filterLoaded)
+                R.string.notification_description_filter else R.string.notification_description))
             .setContentIntent(openApp)
             .setOngoing(true)
             .build()

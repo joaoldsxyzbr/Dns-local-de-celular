@@ -5,7 +5,7 @@
     <string name="home_subtitle">DNS no próprio celular, com foco em baixo consumo de bateria.</string>
     <string name="protection_label">STATUS DA PROTEÇÃO</string>
     <string name="protection_off">Desligada</string>
-    <string name="protection_hint">O protótipo encaminha DNS IPv4/UDP pela VPN local. Filtros HaGeZi e testes em Android ainda estão pendentes.</string>
+    <string name="protection_hint">Protótipo DNS IPv4/UDP. A lista HaGeZi pode bloquear domínios consultados, mas a VPN ainda precisa de testes reais.</string>
     <string name="start_unavailable">Iniciar proteção (em desenvolvimento)</string>
     <string name="dns_section">SERVIDORES DNS</string>
     <string name="primary_pending">Primário: configuração pendente</string>
@@ -16,7 +16,16 @@
     <string name="invalid_secondary_dns">Informe um DNS secundário válido e diferente do primário ou desative a reserva.</string>
     <string name="blocklist_section">BLOQUEIO DE ANÚNCIOS</string>
     <string name="blocklist_default">Lista selecionada: HaGeZi Multi PRO Mini</string>
-    <string name="blocklist_not_loaded">Lista ainda não carregada. Bloqueio inativo.</string>
+    <string name="blocklist_not_loaded">Lista não carregada. Bloqueio inativo.</string>
+    <string name="blocklist_toggle">Ativar bloqueio de anúncios</string>
+    <string name="blocklist_update_button">Baixar / atualizar lista HaGeZi</string>
+    <string name="blocklist_downloading">Baixando e validando lista…</string>
+    <string name="blocklist_update_failed">Falha na atualização. A última lista válida foi mantida, se disponível.</string>
+    <string name="blocklist_ready_format">%1$d domínios carregados (atualizada em %2$s).</string>
+    <string name="blocklist_restart_note">Após baixar, atualizar ou alterar o bloqueio, reinicie o DNS para aplicar. Sem lista válida, o DNS funciona sem filtro.</string>
+    <string name="blocklist_attribution">Lista de terceiros: HaGeZi Multi PRO Mini (GPL-3.0). Fonte: github.com/hagezi/dns-blocklists</string>
+    <string name="protection_dns_filter">DNS experimental ativo com filtro local carregado</string>
+    <string name="notification_description_filter">DNS local com lista HaGeZi carregada (experimental).</string>
     <string name="early_build_note">Protótipo experimental. Uma VPN por perfil; outro aplicativo VPN pode ser desconectado. DNS Privado e IPv6 ainda não foram verificados.</string>
     <string name="start_dns">Iniciar DNS experimental</string>
     <string name="stop_dns">Parar serviço DNS</string>
@@ -24,7 +33,7 @@
     <string name="protection_dns_only">DNS local ativo (sem bloqueio)</string>
     <string name="protection_error">Falha ao iniciar VPN</string>
     <string name="primary_hint">IP do DNS primário (ex.: 1.1.1.1)</string>
-    <string name="primary_transport_note">Protótipo: DNS tradicional UDP/53, sem criptografia. Não há bloqueio de anúncios.</string>
+    <string name="primary_transport_note">Protótipo: DNS tradicional UDP/53, sem criptografia. Filtro opcional com lista válida.</string>
     <string name="invalid_primary_dns">Informe um endereço IPv4 válido e utilizável.</string>
     <string name="vpn_start_failed">Não foi possível iniciar o serviço DNS.</string>
     <string name="vpn_permission_denied">Permissão de VPN não concedida.</string>
