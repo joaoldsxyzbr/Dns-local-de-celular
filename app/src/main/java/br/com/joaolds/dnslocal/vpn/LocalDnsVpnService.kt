@@ -67,7 +67,7 @@ class LocalDnsVpnService : VpnService() {
         stopTunnel()
         publish(Status.STARTING)
         try {
-            createForegroundNotification()
+            createForegroundNotification(starting = true)
             val epoch = generation.incrementAndGet()
             val selection = Intent(intent)
             loader = Thread({
@@ -144,7 +144,7 @@ class LocalDnsVpnService : VpnService() {
             workers = pool
             running = true
             reader = Thread({ pumpPackets(descriptor, processor, pool, dnsAddress, epoch) }, "dns-tun-reader")
-            if (list != null) createForegroundNotification(true)
+            createForegroundNotification(filterLoaded = list != null)
             publish(if (list != null) Status.RUNNING_FILTER else Status.RUNNING)
             reader?.start()
     }
@@ -205,7 +205,7 @@ class LocalDnsVpnService : VpnService() {
         }
     }
 
-    private fun createForegroundNotification(filterLoaded: Boolean = false) {
+    private fun createForegroundNotification(filterLoaded: Boolean = false, starting: Boolean = false) {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(
@@ -221,8 +221,11 @@ class LocalDnsVpnService : VpnService() {
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentTitle(getString(R.string.notification_title))
-            .setContentText(getString(if (filterLoaded)
-                R.string.notification_description_filter else R.string.notification_description))
+            .setContentText(getString(when {
+                starting -> R.string.notification_description_starting
+                filterLoaded -> R.string.notification_description_filter
+                else -> R.string.notification_description
+            }))
             .setContentIntent(openApp)
             .setOngoing(true)
             .build()
