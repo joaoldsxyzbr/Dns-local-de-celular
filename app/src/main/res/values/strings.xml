@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DNS Local</string>
+    <string name="home_title">DNS Local</string>
+    <string name="home_subtitle">DNS no próprio celular, com foco em baixo consumo de bateria.</string>
+    <string name="protection_label">STATUS DA PROTEÇÃO</string>
+    <string name="protection_off">Desligada</string>
+    <string name="protection_hint">O serviço DNS local ainda está em desenvolvimento. Nenhum tráfego é filtrado por esta versão.</string>
+    <string name="start_unavailable">Iniciar proteção (em desenvolvimento)</string>
+    <string name="dns_section">SERVIDORES DNS</string>
+    <string name="primary_pending">Primário: configuração pendente</string>
+    <string name="secondary_off">Secundário (reserva): desativado</string>
+    <string name="secondary_hint">O secundário será opcional e poderá ficar completamente desligado.</string>
+    <string name="blocklist_section">BLOQUEIO DE ANÚNCIOS</string>
+    <string name="blocklist_default">Lista selecionada: HaGeZi Multi PRO Mini</string>
+    <string name="blocklist_not_loaded">Lista ainda não carregada. Bloqueio inativo.</string>
+    <string name="early_build_note">Versão inicial para estruturar o aplicativo. Não é um bloqueador de anúncios funcional.</string>
+</resources>

@@ -1,0 +1,13 @@
+# Android/Gradle build output and local machine state
+.gradle/
+build/
+**/build/
+local.properties
+.idea/
+*.iml
+*.apk
+*.aab
+*.jks
+*.keystore
+captures/
+.externalNativeBuild/
