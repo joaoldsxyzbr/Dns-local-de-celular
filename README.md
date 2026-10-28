@@ -18,6 +18,14 @@ Abrir o repositório no Android Studio com **JDK 17**, SDK Android **API 36** e 
 
 Versões iniciais verificadas nas documentações oficiais: **Android Gradle Plugin 8.13.2**, **Gradle 8.13** e **Kotlin 2.3.10**. Compatibilidade prática e compilação no SDK Android ainda estão **pendentes de teste**. A interface inicial usa APIs nativas, sem bibliotecas de UI extras.
 
+## Progresso técnico — núcleo DNS em teste
+
+- O **codec DNS em Kotlin puro** já analisa consultas IPv4/UDP, constrói respostas com checksums de IPv4 e UDP e produz SERVFAIL explícito.
+- Um **cliente de DNS upstream por UDP** foi adicionado e testado apenas com um servidor local simulado. Ele exige proteção explícita do socket para não contornar incorretamente a VPN; não usa fallback oculto.
+- Teste independente do Android (precisa de JDK e compilador `kotlinc` instalados): `sh tools/test-dns-core.sh`.
+- Consulte [escopo, testes e limites do protótipo](docs/dns-ipv4-prototype.md).
+- **Ainda não há VpnService integrado**, lista HaGeZi carregada nem proteção DNS ativa. Não há build/instalação de APK nem medição de bateria realizados.
+
 ## Planejamento e próximas etapas
 
 📄 **[Plano completo — arquitetura, etapas, riscos e critérios de aceitação](docs/minhas-skills/plans/2026-10-27-dns-local-android.md)**
