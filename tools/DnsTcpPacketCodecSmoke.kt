@@ -34,7 +34,7 @@ fun main() {
     check(DnsTcpPacketCodec.singleDnsQuery(
         byteArrayOf(0x05, 0xc1.toByte()) + ByteArray(1473)) == null)
     val syn = requireNotNull(DnsTcpPacketCodec.encodeReply(
-        request, 99, 100, DnsTcpSession.SYN or DnsTcpSession.ACK, byteArrayOf()))
+        request, 99, 100, 0x12, byteArrayOf())) // SYN | ACK; keep packet test self-contained.
     check(syn.size == 44)
     check(syn[32] == 0x60.toByte())
     check(syn.copyOfRange(40,44).contentEquals(byteArrayOf(2,4,5,0xb4.toByte())))
