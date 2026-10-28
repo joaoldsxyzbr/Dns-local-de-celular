@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
+import android.system.OsConstants
 import br.com.joaolds.dnslocal.MainActivity
 import br.com.joaolds.dnslocal.R
 import br.com.joaolds.dnslocal.blocklist.HaGeZiListStore
@@ -30,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * Experimental DNS-only VPN. No default route is installed: only traffic to
  * the configured virtual DNS IP (198.18.0.1/32) enters the TUN interface.
+ * IPv6 is allowed to use the underlying network, not filtered by this VPN.
  * Real-device behavior, especially Private DNS and IPv6, is NOT yet verified.
  */
 class LocalDnsVpnService : VpnService() {
@@ -81,6 +83,8 @@ class LocalDnsVpnService : VpnService() {
                 .addAddress(LOCAL_IP, 32)
                 .addDnsServer(DNS_IP)
                 .addRoute(DNS_IP, 32)
+                // IPv6 is not filtered yet. Do not block all device IPv6 traffic.
+                .allowFamily(OsConstants.AF_INET6)
                 .establish() ?: throw IllegalStateException("VPN was not authorized")
             tun = descriptor
             val upstream = DnsUpstreamClient(protectSocket = { socket -> protect(socket) })

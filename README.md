@@ -12,6 +12,13 @@ Aplicativo **Android nativo em Kotlin** para filtrar consultas DNS localmente, c
 - Interface baseada na proposta visual anteriormente aprovada; a arte original ainda precisa ser recuperada.
 - Kotlin nativo e prioridade absoluta para funcionamento estável e leve.
 
+## Compilação local e testes manuais
+
+- Em Linux/macOS: `sh tools/build-debug-local.sh` faz pré-checagem da estrutura e tenta gerar um APK debug **somente quando o Android SDK já está configurado**.
+- Sem Android SDK: `python3 tools/check-android-structure.py` executa apenas verificações estáticas; **não comprova build ou funcionamento no Android**.
+- No Windows: abra o projeto no Android Studio e use `gradlew.bat :app:assembleDebug`; siga o [roteiro para validar o APK no celular](docs/android-device-validation.md).
+- Não há workflow automático de CI neste estágio, por decisão do projeto.
+
 ## Compilação da estrutura inicial
 
 Abrir o repositório no Android Studio com **JDK 17**, SDK Android **API 36** e build tools instalados. Executar `./gradlew :app:assembleDebug` (Windows: `gradlew.bat :app:assembleDebug`). Saída esperada, se compilar: `app/build/outputs/apk/debug/app-debug.apk`.
@@ -21,7 +28,7 @@ Versões iniciais verificadas nas documentações oficiais: **Android Gradle Plu
 ## Progresso técnico — VPN DNS-only experimental
 
 - A **VPN local Android** tem autorização por `VpnService.prepare()`, notificação de serviço em primeiro plano, configuração de **DNS primário IPv4** informada pelo usuário, e botões iniciar/parar.
-- O túnel usa DNS virtual `198.18.0.1/32` e **apenas uma rota /32**: não instala rota padrão para a internet. O encaminhamento utiliza sockets protegidos por `VpnService.protect()`, até 2 consultas simultâneas e fila limitada.
+- O túnel usa DNS virtual `198.18.0.1/32` e **apenas uma rota /32**: não instala rota padrão para a internet. O IPv6 não filtrado é liberado com `allowFamily(AF_INET6)` para evitar o bloqueio geral desse tráfego (comportamento real ainda precisa de teste). O encaminhamento utiliza sockets protegidos por `VpnService.protect()`, até 2 consultas simultâneas e fila limitada.
 - A tela diferencia **DNS em execução sem lista** de **DNS com filtro local carregado**. O resolvedor upstream atual usa **UDP/53 sem criptografia** e deve ser usado apenas como protótipo de teste, não como produto de privacidade pronto.
 - O DNS secundário/reserva agora tem controle explícito ligado/desligado, persistência local e fallback **somente em caso de falha do primário**. Desativado, não é configurado nem consultado. Em caso de falha dos servidores selecionados, o processador responde `SERVFAIL`.
 - **Ainda não comprovado em Android real:** comportamento da rota DNS-only, DNS Privado, IPv6, TCP/53, instalação do APK e consumo de bateria. O filtro HaGeZi existe em código, mas ainda não foi validado em Android real. O DNS secundário foi codificado, mas não validado em Android real.
