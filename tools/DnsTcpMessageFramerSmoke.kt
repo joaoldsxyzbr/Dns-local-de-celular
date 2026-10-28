@@ -17,7 +17,7 @@ fun main() {
     val tooShort = DnsTcpMessageFramer()
     check(tooShort.accept(byteArrayOf(0,11)) == null && tooShort.isInvalid)
     val wrongDirection = DnsTcpMessageFramer()
-    check(wrongDirection.accept(framed.copyOf().also { it[4]=0x81.toByte() }) == null)
+    check(wrongDirection.accept(framed.copyOf().also { it[4]=0x81.toByte() }) == null && wrongDirection.isInvalid)
     check(DnsTcpMessageFramer.frameResponse(ByteArray(11)) == null)
     val answer = ByteArray(1472).also { it[0] = 0x01 }
     val parts = requireNotNull(DnsTcpMessageFramer.frameResponse(answer))

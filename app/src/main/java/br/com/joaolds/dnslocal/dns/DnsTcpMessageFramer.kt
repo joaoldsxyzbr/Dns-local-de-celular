@@ -21,8 +21,9 @@ internal class DnsTcpMessageFramer(private val maxDnsBytes: Int = 1472) {
             return null
         }
         if (collected != dnsLength + 2) return null
-        finished = true
-        return DnsTcpPacketCodec.singleDnsQuery(data.copyOf(collected))
+        val query = DnsTcpPacketCodec.singleDnsQuery(data.copyOf(collected))
+        if (query == null) invalid = true else finished = true
+        return query
     }
 
     val isInvalid: Boolean get() = invalid
