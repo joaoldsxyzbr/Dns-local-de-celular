@@ -29,7 +29,7 @@ internal object DnsTcpPacketCodec {
         val ipHeader=(u(p,0) and 15)*4
         if(ipHeader<20 || ipHeader+20>length || word(p,2)!=length) return null
         if(Sum().apply { bytes(p,0,ipHeader) }.result()!=0) return null
-        if(word(p,6) and 0x3fff != 0 || u(p,9)!=6 || num(p,16)!=virtualDnsIp.toLong() and 0xffffffffL) return null
+        if(word(p,6) and 0x3fff != 0 || u(p,9)!=6 || num(p,16)!=(virtualDnsIp.toLong() and 0xffffffffL)) return null
         if(word(p,ipHeader+2)!=53 || word(p,ipHeader)==0) return null
         val tcpHeader=(u(p,ipHeader+12) ushr 4)*4
         if(tcpHeader<20 || ipHeader+tcpHeader>length) return null
