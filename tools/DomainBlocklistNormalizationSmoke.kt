@@ -25,5 +25,18 @@ fun normalizationSmoke() {
     check(probes.all { index.blocks(it) })
     check(!index.blocks("example-10000.ads.test.evil"))
     check(!index.blocks("example-50000.ads.test"))
-    println("OK: ASCII, IDN, invalid-domain and 50k-entry index checks")
+    val cancellation = java.util.concurrent.atomic.AtomicReference<Throwable?>()
+    val parserThread = Thread {
+        Thread.currentThread().interrupt()
+        try {
+            DomainBlocklist.parse(StringReader(fixture))
+        } catch (failure: Throwable) {
+            cancellation.set(failure)
+        }
+    }
+    parserThread.start()
+    parserThread.join(5000)
+    check(!parserThread.isAlive)
+    check(cancellation.get() is java.util.concurrent.CancellationException)
+    println("OK: ASCII, IDN, invalid-domain, cancellation and 50k-entry index checks")
 }

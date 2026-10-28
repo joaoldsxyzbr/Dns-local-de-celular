@@ -3,6 +3,7 @@ package br.com.joaolds.dnslocal.blocklist
 import java.io.Reader
 import java.net.IDN
 import java.util.Locale
+import java.util.concurrent.CancellationException
 
 /** Immutable sorted domain index. No polling, query logging or network access. */
 internal class DomainBlocklist private constructor(private val domains: Array<String>) {
@@ -27,8 +28,13 @@ internal class DomainBlocklist private constructor(private val domains: Array<St
         fun parse(reader: Reader): DomainBlocklist {
             val entries = ArrayList<String>()
             var characters = 0
+            var lineNumber = 0
             reader.buffered().use { input ->
                 input.forEachLine { line ->
+                    // Stop one-time list parsing after the VPN session is cancelled.
+                    if ((lineNumber++ and 255) == 0 && Thread.currentThread().isInterrupted) {
+                        throw CancellationException("Blocklist parsing cancelled")
+                    }
                     characters += line.length + 1
                     require(characters <= MAX_CHARACTERS) { "Blocklist exceeds size limit" }
                     val value = line.trim()
