@@ -25,5 +25,16 @@ fun main() {
     val merged = parts.flatMap { it.toList() }.toByteArray()
     check(merged[0] == 0x05.toByte() && merged[1] == 0xc0.toByte())
     check(merged.copyOfRange(2,merged.size).contentEquals(answer))
+    // A 1472-byte DNS query cannot fit into one 1460-byte TCP payload,
+    // but is valid when two in-order segments are reassembled.
+    val maximalQuery = ByteArray(1472).also { it[2] = 1 }
+    val framedMaximal = byteArrayOf(0x05, 0xc0.toByte()) + maximalQuery
+    val maximal = DnsTcpMessageFramer()
+    check(maximal.accept(framedMaximal.copyOfRange(0, 1000)) == null)
+    check(maximal.accept(framedMaximal.copyOfRange(1000, framedMaximal.size))
+        ?.contentEquals(maximalQuery) == true)
+    check(!maximal.isInvalid)
+    check(DnsTcpPacketCodec.singleDnsQuery(framedMaximal)?.contentEquals(maximalQuery) == true)
+    check(DnsTcpPacketCodec.singleDnsQuery(byteArrayOf(0x05, 0xc1.toByte()) + ByteArray(1473)) == null)
     println("OK: bounded TCP DNS framing and segmented reply smoke checks passed")
 }

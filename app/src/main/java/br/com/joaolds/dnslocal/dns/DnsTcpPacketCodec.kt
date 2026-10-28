@@ -58,11 +58,11 @@ internal object DnsTcpPacketCodec {
         return p
     }
 
-    /** Only a single complete DNS frame; segmented TCP requires a separate state machine. */
+    /** Complete, length-prefixed DNS message (can be reassembled from multiple TCP segments). */
     fun singleDnsQuery(payload:ByteArray):ByteArray? {
-        if(payload.size !in 14..1460) return null
+        if(payload.size !in 14..1474) return null
         val size=word(payload,0)
-        if(size !in 12..1458 || size!=payload.size-2) return null
+        if(size !in 12..1472 || size!=payload.size-2) return null
         val query=payload.copyOfRange(2,payload.size)
         return query.takeIf { u(it,2) and 128 == 0 }
     }

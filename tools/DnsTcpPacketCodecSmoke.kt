@@ -28,6 +28,11 @@ fun main() {
     check(DnsTcpPacketCodec.decode(incoming.copyOf().also { it[32] = 0x40 },incoming.size,server) == null)
     check(DnsTcpPacketCodec.encodeReply(request,0,0,0,ByteArray(1461)) == null)
     check(DnsTcpPacketCodec.encodeReply(request,0,0,0,ByteArray(1460))?.size == 1500)
+    val maximalDns = ByteArray(1472).also { it[2] = 1 }
+    check(DnsTcpPacketCodec.singleDnsQuery(
+        byteArrayOf(0x05, 0xc0.toByte()) + maximalDns)?.contentEquals(maximalDns) == true)
+    check(DnsTcpPacketCodec.singleDnsQuery(
+        byteArrayOf(0x05, 0xc1.toByte()) + ByteArray(1473)) == null)
     println("OK: IPv4/TCP codec smoke checks passed")
 }
 

@@ -21,3 +21,7 @@ O script `python3 tools/test-vpn-startup-structure.py` verifica estas invariante
 O complemento `DnsTcpMessageFramer` acumula, sob limite estrito de 1.474 bytes, pedaços **já ordenados** de uma única consulta DNS/TCP. Rejeita prefixos fora do limite, bytes excedentes e respostas apresentadas como consultas. Também divide uma resposta de até 1.472 bytes em pedaços TCP de até 1.460 bytes, sem polling nem tarefas em segundo plano. Teste JVM independente: `sh tools/test-tcp-framing.sh`.
 
 **Falta** controle da sequência TCP, remontagem de pacotes fora de ordem, handshake, retransmissão e encerramento de sessão. Portanto este framer continua isolado e **não é ativação de DNS TCP no túnel**. O código em Android só será ligado após validações específicas.
+
+## Correção no limite de consultas TCP reagrupadas (28/10/2026)
+
+A leitura `singleDnsQuery` antes limitava o pacote prefixado a 1.460 bytes (1.458 bytes úteis), o que rejeitava indevidamente uma consulta DNS válida de 1.472 bytes após remontagem por `DnsTcpMessageFramer`. O limite agora aceita até **1.474 bytes de framing** (prefixo de dois bytes + 1.472 bytes DNS), mantendo a rejeição de 1.473 bytes DNS. O teste de regressão foi reproduzido com `kotlinc`/JVM (falhou antes, passou após correção) e adicionado aos testes de codec e framing; não foi compilado em Android.
