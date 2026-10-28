@@ -62,6 +62,7 @@ fun main() {
     tunnelSmoke()
     responseIntegritySmoke()
     upstreamSmoke()
+    tcpFallbackSmoke()
     println("OK: DNS packet codec smoke checks passed")
 }
 

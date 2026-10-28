@@ -87,7 +87,10 @@ class LocalDnsVpnService : VpnService() {
                 .allowFamily(OsConstants.AF_INET6)
                 .establish() ?: throw IllegalStateException("VPN was not authorized")
             tun = descriptor
-            val upstream = DnsUpstreamClient(protectSocket = { socket -> protect(socket) })
+            val upstream = DnsUpstreamClient(
+                protectSocket = { socket -> protect(socket) },
+                protectTcpSocket = { socket -> protect(socket) }
+            )
             val selection = DnsFailoverResolver { request, destination ->
                 upstream.resolve(request, destination)
             }

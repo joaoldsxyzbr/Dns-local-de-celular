@@ -60,3 +60,9 @@ O script `tools/test-filter-pipeline.sh` inclui o módulo `DnsResponseValidator.
 ## Respostas truncadas (TC=1)
 
 O resolvedor de DNS por UDP não aceita respostas com o bit `TC` (truncadas) como respostas completas. A resposta truncada provoca uma tentativa no servidor DNS de reserva **somente se a reserva estiver ativada**; caso contrário, ou se o segundo servidor também truncar, o túnel devolve `SERVFAIL` em vez de anunciar uma resolução completa. Há teste de regressão em `DnsFailoverResolverSmoke.kt`. **Não foi implementado DNS via TCP/53:** respostas grandes que exigem TCP continuam sem suporte; o comportamento em Android real ainda deve ser validado.
+
+## Nova tentativa DNS por TCP em respostas UDP truncadas
+
+Respostas UDP com TC=1 passam a acionar uma consulta com prefixo de comprimento de dois bytes por TCP ao **mesmo IP e porta configurados**. Os sockets de ambos os transportes precisam passar por `VpnService.protect` **antes de conectar**; sem callback de proteção TCP, a tentativa falha fechada. Uma única janela de timeout cobre UDP e TCP, e a resposta TCP só é aceita se ID, pergunta e flags corresponderem e TC estiver desligado. Respostas TCP superiores a 1472 bytes, inválidas ou incompletas não entram no TUN. Se o primário falhar, o failover para o DNS reserva depende da preferência existente.
+
+**Limitação:** este incremento é apenas um fallback `upstream UDP → TCP`. O túnel continua aceitando **consultas de entrada IPv4/UDP**, não captura DNS TCP/53 do Android, nem oferece suporte a DNS criptografado, IPv6 ou pacotes de DNS acima do MTU. O transporte foi testado em JVM com servidores UDP e TCP simulados de loopback, inclusive proteção recusada, TC persistente, resposta inválida e excedente. Sem validação em Android real.

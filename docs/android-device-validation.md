@@ -19,7 +19,8 @@ Este roteiro **não é evidência de que os testes passaram**. Foi preparado par
 - [ ] Desligar o filtro, reiniciar serviço e confirmar que o mesmo domínio deixa de ser bloqueado pela política local.
 - [ ] Interromper internet no meio do download: lista válida anterior deve permanecer. Testar com e sem versão local anterior.
 - [ ] Alternar Wi-Fi/dados móveis, modo avião, VPN do sistema revogada, fechar interface e voltar. Não deve indicar falsamente proteção nem manter tarefas ativas após parada.
-- [ ] Testar DNS Privado do Android (desligado/automático/nome do provedor), DNS via TCP/53, IPv6 e DoH; registrar comportamentos **não suportados** e problemas de conexão.
+- [ ] Provocar uma resposta UDP com TC=1 em servidor controlado e confirmar uma nova consulta **TCP ao mesmo DNS** com socket protegido; repetir com primário indisponível e reserva ligada/desligada. Verificar que respostas TCP acima de 1472 bytes não são apresentadas como completas.
+- [ ] Testar DNS Privado do Android (desligado/automático/nome do provedor), **consultas TCP/53 originadas diretamente de aplicativos** (não capturadas pelo TUN), IPv6 e DoH; registrar comportamentos não suportados e problemas de conexão.
 - [ ] Medir consumo de bateria, RAM e CPU com tela apagada/acesa por períodos comparáveis, com VPN desligada e ligada. Não anunciar economia sem números registrados.
 - [ ] Verificar licenciamento/atribuição da HaGeZi e a política de foreground service antes de assinatura/distribuição.
 
