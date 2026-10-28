@@ -25,7 +25,9 @@ Versões iniciais verificadas nas documentações oficiais: **Android Gradle Plu
 - A tela diferencia **DNS em execução (sem bloqueio de anúncios)** de filtragem. O resolvedor upstream atual usa **UDP/53 sem criptografia** e deve ser usado apenas como protótipo de teste, não como produto de privacidade pronto.
 - O DNS secundário/reserva agora tem controle explícito ligado/desligado, persistência local e fallback **somente em caso de falha do primário**. Desativado, não é configurado nem consultado. Em caso de falha dos servidores selecionados, o processador responde `SERVFAIL`.
 - **Ainda não comprovado em Android real:** comportamento da rota DNS-only, DNS Privado, IPv6, TCP/53, instalação do APK e consumo de bateria. Também faltam HaGeZi e proteção efetiva contra anúncios. O DNS secundário foi codificado, mas não validado em Android real.
-- Teste local de protocolo (Kotlin/JVM, não substitui build Android): `sh tools/test-dns-core.sh`.
+- Testes locais do protocolo/fallback: `sh tools/test-dns-core.sh` (JDK + `kotlinc`).
+- Índice de domínios **HaGeZi Multi PRO Mini** implementado, com parser e busca por domínio/subdomínio. Ele ainda **não** está conectado ao serviço VPN: não existe bloqueio efetivo. [Limites e testes do índice](docs/hagezi-local-index.md).
+- Teste isolado do índice com dados artificiais: `sh tools/test-blocklist-core.sh`. Os testes JVM foram executados; não substituem build Android.
 
 ## Histórico do núcleo DNS (etapa anterior)
 
