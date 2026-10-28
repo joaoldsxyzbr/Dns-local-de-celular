@@ -18,3 +18,11 @@ Resultado observado localmente: `OK: DNS packet codec smoke checks passed`. Os t
 - Não existe serviço `VpnService` ligado à interface, nem DNS externo encaminhado: nenhum tráfego real foi filtrado. Um cliente UDP upstream separado foi adicionado, mas **ainda não está conectado à VPN**. Os sockets só podem enviar consultas após um callback obrigatório de proteção; falhas retornam nulo, sem resolver secundário implícito. O teste usa apenas um servidor UDP de loopback, verifica ID da transação, proteção obrigatória e comportamento diante de falhas.
 - Não há medições de consumo de bateria; o Android SDK não está instalado no ambiente disponível. Build Android `./gradlew :app:assembleDebug` ainda não foi executado.
 - Manter o CI para a validação final, conforme a decisão do projeto.
+
+## Integração Android experimental (a validar)
+
+O serviço nativo `LocalDnsVpnService` agora declara a permissão `BIND_VPN_SERVICE`, solicita autorização pela tela inicial, configura um endereço DNS virtual `198.18.0.1/32` com rota exclusiva ao destino e usa `VpnService.protect()` nos sockets de upstream. O app exige **IPv4 literal informado pelo usuário** e comunica que o transporte UDP/53 não é criptografado. A tela de status diferencia serviço DNS sem bloqueio de filtro HaGeZi. Serviço em primeiro plano usa o tipo `specialUse`, sujeito a revisão de requisitos caso o aplicativo seja distribuído via Play Store.
+
+A execução ainda está **pendente de Android SDK, build real, dispositivo e verificação de roteamento de rede**. Não há garantia de funcionamento com DNS Privado, IPv6, TCP/53, outra VPN, sempre ativa ou bloqueio de tráfego fora da VPN. Não habilitar always-on neste protótipo. O cliente trabalha por eventos de leitura bloqueante, com até duas consultas simultâneas e fila limitada a 48; excesso de trabalho recebe SERVFAIL, não acumula tarefas sem limite.
+
+Teste de fluxo de consultas (`tools/DnsTunnelProcessorSmoke.kt`): geração de resposta de sucesso, fallback explícito a SERVFAIL, resposta com ID incorreto e pacotes que não devem alcançar o upstream. Executar `sh tools/test-dns-core.sh` antes de afirmar aprovação do teste.

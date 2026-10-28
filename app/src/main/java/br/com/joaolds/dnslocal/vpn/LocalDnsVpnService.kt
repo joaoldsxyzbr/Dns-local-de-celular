@@ -21,6 +21,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Experimental DNS-only VPN. No default route is installed: only traffic to
@@ -43,6 +44,7 @@ class LocalDnsVpnService : VpnService() {
     enum class Status { OFF, STARTING, RUNNING, ERROR }
 
     @Volatile private var running = false
+    private val generation = AtomicLong(0L)
     private var tun: ParcelFileDescriptor? = null
     private var reader: Thread? = null
     private var workers: ThreadPoolExecutor? = null
@@ -75,7 +77,8 @@ class LocalDnsVpnService : VpnService() {
             )
             workers = pool
             running = true
-            reader = Thread({ pumpPackets(descriptor, processor, pool, dnsAddress) }, "dns-tun-reader")
+            val epoch = generation.incrementAndGet()
+            reader = Thread({ pumpPackets(descriptor, processor, pool, dnsAddress, epoch) }, "dns-tun-reader")
                 .apply { start() }
             publish(Status.RUNNING)
         } catch (_: Exception) {
@@ -90,19 +93,20 @@ class LocalDnsVpnService : VpnService() {
         descriptor: ParcelFileDescriptor,
         processor: DnsTunnelProcessor,
         pool: ThreadPoolExecutor,
-        dnsAddress: Int
+        dnsAddress: Int,
+        epoch: Long
     ) {
         val output = FileOutputStream(descriptor.fileDescriptor)
         try {
             FileInputStream(descriptor.fileDescriptor).use { input ->
                 val buffer = ByteArray(1500)
-                while (running && !Thread.currentThread().isInterrupted) {
+                while (isCurrent(epoch) && !Thread.currentThread().isInterrupted) {
                     val count = input.read(buffer)
                     if (count <= 0) break
                     val packet = buffer.copyOf(count)
                     val task = Runnable {
                         val answer = processor.reply(packet, packet.size)
-                        if (answer != null && running) writePacket(output, answer)
+                        if (answer != null && isCurrent(epoch)) writePacket(output, answer, epoch)
                     }
                     try {
                         pool.execute(task)
@@ -112,7 +116,7 @@ class LocalDnsVpnService : VpnService() {
                         if (query != null) {
                             val error = DnsPacketCodec.servfail(query.dnsPayload)
                             val reply = error?.let { DnsPacketCodec.encodeReply(query, it) }
-                            if (reply != null && running) writePacket(output, reply)
+                            if (reply != null && isCurrent(epoch)) writePacket(output, reply, epoch)
                         }
                     }
                 }
@@ -120,16 +124,18 @@ class LocalDnsVpnService : VpnService() {
         } catch (_: IOException) {
             // Closing TUN during stop/revoke also interrupts a blocking read.
         } finally {
-            if (running) {
+            if (isCurrent(epoch)) {
                 publish(Status.ERROR)
                 stopSelf()
             }
         }
     }
 
-    private fun writePacket(output: FileOutputStream, packet: ByteArray) {
+    private fun isCurrent(epoch: Long): Boolean = running && generation.get() == epoch
+
+    private fun writePacket(output: FileOutputStream, packet: ByteArray, epoch: Long) {
         synchronized(output) {
-            if (running) {
+            if (isCurrent(epoch)) {
                 try {
                     output.write(packet)
                 } catch (_: IOException) {
@@ -164,15 +170,14 @@ class LocalDnsVpnService : VpnService() {
 
     private fun parseServer(value: String?): Inet4Address? {
         val ip = DnsPacketCodec.parseIpv4Address(value ?: return null) ?: return null
-        if (value == DNS_IP || value == LOCAL_IP) return null
+        if (value == DNS_IP || value == LOCAL_IP || value == "255.255.255.255") return null
         val bytes = byteArrayOf(
             (ip ushr 24).toByte(), (ip ushr 16).toByte(),
             (ip ushr 8).toByte(), ip.toByte()
         )
         val address = InetAddress.getByAddress(bytes) as Inet4Address
         if (address.isAnyLocalAddress || address.isLoopbackAddress ||
-            address.isMulticastAddress || address.isLinkLocalAddress ||
-            address.isSiteLocalAddress && value == "255.255.255.255") return null
+            address.isMulticastAddress || address.isLinkLocalAddress) return null
         return address
     }
 
@@ -183,6 +188,7 @@ class LocalDnsVpnService : VpnService() {
 
     private fun stopTunnel() {
         running = false
+        generation.incrementAndGet()
         workers?.shutdownNow()
         workers = null
         try { tun?.close() } catch (_: IOException) {}
@@ -199,9 +205,8 @@ class LocalDnsVpnService : VpnService() {
 
     override fun onDestroy() {
         stopTunnel()
-        publish(Status.OFF)
+        if (status != Status.ERROR) publish(Status.OFF)
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?): android.os.IBinder? = super.onBind(intent)
 }
