@@ -21,7 +21,8 @@ Este roteiro **não é evidência de que os testes passaram**. Foi preparado par
 - [ ] Alternar Wi-Fi/dados móveis, modo avião, VPN do sistema revogada, fechar interface e voltar. Não deve indicar falsamente proteção nem manter tarefas ativas após parada.
 - [ ] Durante leitura de lista grande, parar/reiniciar a VPN e fechar/reabrir a tela; confirmar que threads canceladas não deixam o status em "Conectando…" nem continuam consumindo CPU.
 - [ ] Provocar uma resposta UDP com TC=1 em servidor controlado e confirmar uma nova consulta **TCP ao mesmo DNS** com socket protegido; repetir com primário indisponível e reserva ligada/desligada. Verificar que respostas TCP acima de 1472 bytes não são apresentadas como completas.
-- [ ] Testar DNS Privado do Android (desligado/automático/nome do provedor), **consultas TCP/53 originadas diretamente de aplicativos** (não capturadas pelo TUN), IPv6 e DoH; registrar comportamentos não suportados e problemas de conexão.
+- [ ] Testar **DNS/TCP originado no celular**: SYN/MSS, consulta completa ou dividida, resposta NXDOMAIN via HaGeZi, DNS de reserva, respostas fragmentadas em múltiplos segmentos, FIN separado/combinado, perda de ACK e retransmissão. Não considerar aprovado sem evidência em Android.
+- [ ] Testar DNS Privado do Android (desligado/automático/nome do provedor), IPv6 e DoH; registrar comportamentos não suportados e problemas de conexão.
 - [ ] Medir consumo de bateria, RAM e CPU com tela apagada/acesa por períodos comparáveis, com VPN desligada e ligada. Não anunciar economia sem números registrados.
 - [ ] Verificar licenciamento/atribuição da HaGeZi e a política de foreground service antes de assinatura/distribuição.
 

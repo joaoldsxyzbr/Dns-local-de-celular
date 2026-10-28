@@ -31,7 +31,7 @@ Versões iniciais verificadas nas documentações oficiais: **Android Gradle Plu
 - O túnel usa DNS virtual `198.18.0.1/32` e **apenas uma rota /32**: não instala rota padrão para a internet. O IPv6 não filtrado é liberado com `allowFamily(AF_INET6)` para evitar o bloqueio geral desse tráfego (comportamento real ainda precisa de teste). O encaminhamento utiliza sockets protegidos por `VpnService.protect()`, até 2 consultas simultâneas e fila limitada.
 - A tela diferencia **DNS em execução sem lista** de **DNS com filtro local carregado**. O resolvedor upstream atual usa **UDP/53 sem criptografia** e deve ser usado apenas como protótipo de teste, não como produto de privacidade pronto.
 - O DNS secundário/reserva agora tem controle explícito ligado/desligado, persistência local e fallback **somente em caso de falha do primário**. Desativado, não é configurado nem consultado. Em caso de falha dos servidores selecionados, o processador responde `SERVFAIL`.
-- Quando o DNS upstream responde via UDP com TC=1, o aplicativo tenta a mesma consulta por TCP/53 **no mesmo servidor**, usando outro socket protegido pela VPN. Somente então considera o DNS de reserva opcional, caso não obtenha resposta válida. O TUN continua recebendo apenas IPv4/UDP; TCP vindo diretamente de aplicativos e respostas acima de 1472 bytes não são suportados.
+- Quando o DNS upstream responde via UDP com TC=1, o aplicativo tenta a mesma consulta por TCP/53 **no mesmo servidor**, usando outro socket protegido pela VPN. Somente então considera o DNS de reserva opcional, caso não obtenha resposta válida. O TUN também processa **IPv4/TCP experimental** por um worker separado, ainda sem validação em aparelho. Respostas acima de 1472 bytes não são suportadas.
 - **Ainda não comprovado em Android real:** comportamento da rota DNS-only, DNS Privado, IPv6, TCP/53, instalação do APK e consumo de bateria. O filtro HaGeZi existe em código, mas ainda não foi validado em Android real. O DNS secundário foi codificado, mas não validado em Android real.
 - Testes locais do protocolo/fallback: `sh tools/test-dns-core.sh` (JDK + `kotlinc`).
 - Índice local **HaGeZi Multi PRO Mini** conectado à VPN: domínios incluídos na lista carregada recebem NXDOMAIN sem consultar o upstream. Atualização somente manual por HTTPS e substituição atômica com conservação da última lista válida em falhas. O filtro pode ser desativado sem parar o DNS; mudanças exigem reiniciar a VPN. [Detalhes e limites](docs/hagezi-local-index.md).
@@ -53,10 +53,10 @@ Ordem: validar build da estrutura Android → provar viabilidade DNS local com `
 
 ## Incrementos recentes — protocolo TCP e inicialização
 
-- Um codec experimental `DnsTcpPacketCodec` valida e constrói segmentos IPv4/TCP em Kotlin puro.
-- O componente isolado `DnsTcpSession` modela o handshake e **uma única consulta** por conexão em modo reativo (sem polling). Ainda falta integrar com um controlador seguro de conexões e com o TUN. Teste sob demanda: `sh tools/test-tcp-session.sh`. **Ainda não está ligado ao TUN**: handshake, estado/retransmissão e fragmentação TCP continuam pendentes. Teste JVM sob demanda: `sh tools/test-tcp-packet-core.sh`.
-- O índice HaGeZi agora é carregado **uma única vez por inicialização, em thread separada**, antes de estabelecer a VPN; geração de sessão invalida resultados antigos após parar/reiniciar. Durante a carga, a interface e notificação mostram início/preparação, não proteção ativa. **Não existe polling, atualização periódica ou job de fundo contínuo.**
-- Verificação estrutural da inicialização (não é teste Android): `python3 tools/test-vpn-startup-structure.py`. [Detalhes e limites](docs/dns-tcp-packet-foundation.md).
+- `DnsTcpPacketCodec`, `DnsTcpMessageFramer` e `DnsTcpSession` formam o núcleo experimental TCP com integridade IP/TCP, MSS, sequência/ACK, resposta DNS e fechamento FIN.
+- `DnsTcpTunnelProcessor` **agora está conectado ao TUN**, com até 64 sessões simultâneas, uma fila própria de 48 itens e um worker TCP; UDP permanece independente. **Ainda não testado no Android real.** Teste JVM: `sh tools/test-tcp-tunnel.sh`.
+- O índice HaGeZi é carregado **uma única vez por inicialização, fora da thread principal**, com cancelamento por geração; sem polling, timer, atualização periódica ou sondagem.
+- Verificação estrutural (não compila Android): `python3 tools/check-android-structure.py`. [Detalhes e limites](docs/dns-tcp-packet-foundation.md).
 
 ## Limitações técnicas importantes
 

@@ -71,6 +71,21 @@ class AndroidPreflight(unittest.TestCase):
         self.assertIn("if (secondaryEnabled)", s)
         self.assertIn("if (selection.backupEnabled)", a)
 
+    def test_tcp_tun_is_bounded_and_separate(self):
+        s = self.service
+        tcp = content("app/src/main/java/br/com/joaolds/dnslocal/dns/DnsTcpTunnelProcessor.kt")
+        session = content("app/src/main/java/br/com/joaolds/dnslocal/dns/DnsTcpSession.kt")
+        self.assertIn("DnsTcpTunnelProcessor(dnsAddress, filter::resolve)", s)
+        self.assertIn("1, 1, 0L, TimeUnit.MILLISECONDS", s)
+        self.assertIn("tcpPool.execute(tcpTask)", s)
+        self.assertIn("tcpWorkers?.shutdownNow()", s)
+        self.assertIn("maximumSessions: Int = 64", tcp)
+        self.assertIn("sessions.size == maximumSessions", tcp)
+        self.assertIn("SecureRandom()", tcp)
+        self.assertIn("WAIT_PEER_FIN", session)
+        for forbidden in ("postDelayed(", "scheduleAtFixedRate(", "scheduleWithFixedDelay(", "Timer("):
+            self.assertNotIn(forbidden, s + tcp + session)
+
     def test_blocklist_update_is_explicit_and_fail_safe(self):
         a = self.activity
         store = content("app/src/main/java/br/com/joaolds/dnslocal/blocklist/HaGeZiListStore.kt")

@@ -2,7 +2,7 @@
 
 O novo `DnsTcpPacketCodec.kt` lê segmentos IPv4/TCP destinados à porta 53 do DNS virtual, valida cabeçalho IPv4, integridade TCP com pseudo-cabeçalho, número de sequência e ACK, e pode codificar uma resposta sintética com checksums corretos. O método `singleDnsQuery` reconhece uma única mensagem DNS completa, com prefixo de comprimento (dois bytes).
 
-**Ainda não está ligado ao serviço VPN.** Não foram implementados handshake TCP, estado de conexões, retransmissões, remontagem de segmentos parciais, fechamento ou respostas TCP maiores que um segmento. Esses recursos são necessários antes de afirmar que DNS TCP originado no Android é atendido. O fallback TCP **upstream** após `TC=1` já é outra funcionalidade existente.
+**Evolução em 28/10/2026:** o codec e a máquina de estados foram integrados experimentalmente ao TUN. O fallback TCP **upstream** após `TC=1` permanece separado. Falta validação em aparelho, sobretudo sob perdas e DNS Privado.
 
 ## Verificação
 
@@ -20,7 +20,7 @@ O script `python3 tools/test-vpn-startup-structure.py` verifica estas invariante
 
 O complemento `DnsTcpMessageFramer` acumula, sob limite estrito de 1.474 bytes, pedaços **já ordenados** de uma única consulta DNS/TCP. Rejeita prefixos fora do limite, bytes excedentes e respostas apresentadas como consultas. Também divide uma resposta de até 1.472 bytes em pedaços TCP de até 1.460 bytes, sem polling nem tarefas em segundo plano. Teste JVM independente: `sh tools/test-tcp-framing.sh`.
 
-**Falta** controle da sequência TCP, remontagem de pacotes fora de ordem, handshake, retransmissão e encerramento de sessão. Portanto este framer continua isolado e **não é ativação de DNS TCP no túnel**. O código em Android só será ligado após validações específicas.
+**Histórico:** o framer foi criado isoladamente; agora está conectado à máquina de estados TCP. Segmentos fora de ordem provocam ACK do próximo número esperado, sem buffer de reordenação. O comportamento em redes reais ainda não foi testado.
 
 ## Correção no limite de consultas TCP reagrupadas (28/10/2026)
 
@@ -32,4 +32,14 @@ O novo `DnsTcpSession` é uma máquina de estados **para uma única conexão e u
 
 O teste `sh tools/test-tcp-session.sh` cobre o handshake, SYN repetido, consulta dividida em segmentos, chegada fora de ordem, resposta, retransmissão sem nova resolução DNS, ACK errado, fechamento, prefixo inválido, falha do resolvedor com SERVFAIL e volta do contador de sequência (32 bits). Parte desses cenários passou em ensaio Kotlin/JVM com interfaces equivalentes às classes do repositório; o script versionado deve ser executado no checkout completo para assegurar a integração.
 
-**Não integrar diretamente ao VpnService ainda:** faltam a tabela de conexões com limite explícito e tratamento de colisões, seleção de sequência inicial com entropia adequada, negociação MSS/janela e fluxos de congestionamento, retransmissões/ACKs de dados sob perda real, FIN/RST em todas as condições, validação de tráfego real e testes Android. Não anunciar TCP DNS do celular como pronto. O código não altera a rota VPN nem os workers ativos.
+**Histórico:** a tabela agora é limitada a 64 sessões com ISNs de `SecureRandom`, negociação MSS e fechamento FIN com confirmação do cliente. Ainda faltam ensaios reais com perda de pacotes e validação de Android antes de considerar o TCP pronto para uso.
+
+## Ativação experimental de DNS/TCP no TUN — 28/10/2026
+
+O leitor TUN encaminha os pacotes TCP candidatos para **um worker TCP dedicado** e fila de até 48 tarefas. Os pacotes UDP continuam nos dois workers existentes. A geração de sessão impede escrita depois de parar/revogar a VPN; os recursos TCP são fechados pelo mesmo ciclo de vida do serviço.
+
+O `DnsTcpTunnelProcessor` mantém no máximo **64 conexões simultâneas**, indexadas por IP de origem, porta de origem e IP virtual de destino. Apenas SYN novo cria conexão. O descarte de sessões antigas ocorre na chegada de outro pacote (LRU e limite de ociosidade de 60 segundos); **não existe varredura periódica, polling, timer ou sondagem**. ISNs são aleatórios pelo `SecureRandom`.
+
+O SYN-ACK anuncia MSS 1460; o MSS fornecido pelo cliente é extraído das opções TCP e respeitado para segmentar respostas. Sem anúncio, aplica-se o padrão conservador de 536 bytes. O protocolo atende **uma consulta DNS por conexão**, montada de segmentos TCP recebidos na ordem; dados fora da ordem geram ACK para retransmissão. O FIN do servidor não remove prematuramente a sessão: ela aguarda e confirma o FIN do cliente.
+
+Verificações versionadas: `sh tools/test-tcp-tunnel.sh`, `sh tools/test-tcp-session.sh`, `sh tools/test-tcp-framing.sh`, `sh tools/test-tcp-packet-core.sh` e `python3 tools/check-android-structure.py`. Há dados sintéticos para tabela limitada e fluxo TCP/TUN; **faltam execução integral das suítes no checkout Android, compilação APK, instalação, teste de perdas reais, DNS Privado e medição de bateria/RAM/CPU**. O CI será acionado apenas na última etapa do projeto.
