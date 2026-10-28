@@ -16,7 +16,6 @@ import br.com.joaolds.dnslocal.blocklist.HaGeZiListStore
 import java.io.File
 import java.util.Date
 import java.text.DateFormat
-import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import br.com.joaolds.dnslocal.dns.DnsPacketCodec
@@ -36,7 +35,8 @@ class MainActivity : Activity() {
     private data class DnsSelection(
         val primary: String,
         val secondary: String?,
-        val backupEnabled: Boolean
+        val backupEnabled: Boolean,
+        val blockEnabled: Boolean
     )
     private var pendingSelection: DnsSelection? = null
     private val receiver = object : BroadcastReceiver() {
@@ -64,6 +64,9 @@ class MainActivity : Activity() {
         }
         blockingEnabled = findViewById(R.id.blockingEnabled)
         blockingEnabled.isChecked = prefs.getBoolean("blockEnabled", true)
+        blockingEnabled.setOnCheckedChangeListener { _, enabled ->
+            getPreferences(MODE_PRIVATE).edit().putBoolean("blockEnabled", enabled).apply()
+        }
         listStatus = findViewById(R.id.blocklistStatus)
         updateList = findViewById(R.id.updateBlocklist)
         updateList.setOnClickListener { updateHaGeZi() }
@@ -114,7 +117,9 @@ class MainActivity : Activity() {
             Toast.makeText(this, R.string.invalid_secondary_dns, Toast.LENGTH_LONG).show()
             return
         }
-        val selection = DnsSelection(server, if (enabled) secondary else null, enabled)
+        val selection = DnsSelection(
+            server, if (enabled) secondary else null, enabled, blockingEnabled.isChecked
+        )
         // Preserve the entered secondary address, but never send it to the
         // service while backup is disabled.
         getPreferences(MODE_PRIVATE).edit()
@@ -139,7 +144,7 @@ class MainActivity : Activity() {
             .setAction(LocalDnsVpnService.ACTION_START)
             .putExtra(LocalDnsVpnService.EXTRA_PRIMARY, selection.primary)
             .putExtra(LocalDnsVpnService.EXTRA_USE_SECONDARY, selection.backupEnabled)
-            .putExtra(LocalDnsVpnService.EXTRA_BLOCK_ENABLED, blockingEnabled.isChecked)
+            .putExtra(LocalDnsVpnService.EXTRA_BLOCK_ENABLED, selection.blockEnabled)
         if (selection.backupEnabled) {
             intent.putExtra(LocalDnsVpnService.EXTRA_SECONDARY, selection.secondary)
         }
