@@ -15,7 +15,7 @@ O último CI deve executar, sem tarefas agendadas:
 - `sh tools/test-tcp-framing.sh`
 - `sh tools/test-tcp-session.sh`
 - `sh tools/test-tcp-tunnel.sh`
-- `./gradlew --no-daemon :app:assembleDebug`
+- `./gradlew --no-daemon :app:lintDebug :app:assembleDebug` (lint e compilação na mesma execução Gradle)
 
 O APK **debug** resultante, se o build passar, é apenas para teste autorizado. Um CI aprovado atesta essas verificações no runner; **não substitui a instalação real, conexão de rede ou ensaios de energia**.
 
@@ -31,3 +31,7 @@ O APK **debug** resultante, se o build passar, é apenas para teste autorizado. 
 - [ ] Confirmar assinatura final do autor, design aprovado e os elementos de tela ausentes antes de publicação.
 
 Para registro por aparelho, seguir `docs/android-device-validation.md`. Não publicar logs com consultas privadas nem dados pessoais. Não executar tarefas em polling, downloads periódicos nem CI a cada commit durante o desenvolvimento.
+
+## Incremento posterior ao primeiro CI aprovado (28/10/2026)
+
+A atualização manual da HaGeZi agora é interrompida ao destruir a tela, inclusive em rotação, e o armazenamento verifica cancelamento antes/depois de leituras e antes de substituir o cache válido. A regressão Kotlin com InputStream interrompido e a verificação estática do ciclo de vida são incluídas nos testes já existentes. A validação final desta revisão também executa **Android Lint**. Estes resultados não substituem ensaios no aparelho físico.
